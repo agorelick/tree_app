@@ -1,4 +1,4 @@
-# app.R (4 draggable cohorts + JSON download)
+# app.R (4 draggable cohorts + JSON download + CSV tag overlays)
 library(shiny)
 library(jsonlite)
 
@@ -17,6 +17,10 @@ ui <- fluidPage(
       .filename { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; color:#333; }
       .thumb { position: relative; display: inline-block; cursor: pointer; width: 100%; }
       .thumbnail { width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background:#fff; border:1px solid #d0d0d0; border-radius:10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+
+      /* Tag chips overlay */
+      .tag-strip { position: absolute; right: 8px; bottom: 8px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: calc(100% - 16px); pointer-events: none; }
+      .tag-chip { font-size: 10px; line-height: 1; color: #fff; border-radius: 999px; padding: 4px 7px; box-shadow: 0 1px 2px rgba(0,0,0,.18); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
       .popup { position: fixed; display: none; border:1px solid #bdbdbd; background:#fff; border-radius:12px; box-shadow:0 8px 26px rgba(0,0,0,.20); width: 520px; height: auto; z-index: 9999; max-width: 90vw; max-height: 90vh; overflow: hidden; }
       .popup-title { font-size: 14px; font-weight: 600; background:#f5f5f5; padding:6px 10px; border-bottom:1px solid #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -55,7 +59,6 @@ ui <- fluidPage(
         window.addEventListener('scroll', function(){ document.querySelectorAll('.popup').forEach(function(p){ p.style.display='none'; }); }, { passive:true });
         window.addEventListener('resize', function(){ document.querySelectorAll('.popup').forEach(function(p){ p.style.display='none'; }); });
 
-        // Make cards draggable
         document.addEventListener('dragstart', function(e){
           var card = e.target.closest('.card'); if (!card) return;
           e.dataTransfer.effectAllowed = 'copy';
@@ -63,7 +66,6 @@ ui <- fluidPage(
           if (id) e.dataTransfer.setData('text/plain', id);
         }, true);
 
-        // Setup multiple drop zones -> input cohort_add1..4
         function setupDropZone() {
           ['cohortDrop1','cohortDrop2','cohortDrop3','cohortDrop4'].forEach(function(zoneId, idx){
             var zone = document.getElementById(zoneId); if (!zone) return;
@@ -96,6 +98,14 @@ ui <- fluidPage(
       fileInput("rds", "Upload .rds (named list of phylo objects)", accept = ".rds"),
       actionButton("reload_default", "Reload ./data.rds"),
       br(), br(),
+
+      # NEW: tag CSV upload
+      tags$p(class = "help-text",
+             strong("Optional tags CSV:"),
+             " rows = tags; columns = tree names; cells == 1 indicate the tag applies."
+      ),
+      fileInput("tag_csv", "Upload tag matrix (CSV)", accept = c(".csv", ".txt")),
+      br(),
 
       # Layout toggle (plot type only)
       radioButtons("layout", "Tree layout",
@@ -201,6 +211,10 @@ server <- function(input, output, session) {
   raw_list  <- reactiveVal(NULL)       # named list of phylo objects
   items     <- reactiveVal(list())     # rendered asset metadata
   notes     <- reactiveVal(NULL)
+
+  # NEW: tag data (matrix and colors)
+  tags_mat  <- reactiveVal(NULL)       # numeric matrix: rows = tags, cols = tree names
+  tag_colors <- reactiveVal(setNames(character(), character()))
 
   # Four cohorts stored as a list of character vectors
   empty_cohorts <- list(`Cohort 1` = character(), `Cohort 2` = character(),
@@ -380,6 +394,59 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = TRUE)
 
+  # NEW: tag CSV loader
+  observeEvent(input$tag_csv, {
+    req(input$tag_csv$datapath)
+    df <- try(utils::read.csv(input$tag_csv$datapath, check.names = FALSE, row.names = 1), silent = TRUE)
+    if (inherits(df, "try-error")) {
+      notes(paste0("Failed to read tag CSV: ", attr(df, "condition")$message))
+      tags_mat(NULL); tag_colors(setNames(character(), character()))
+      return(invisible())
+    }
+    if (!nrow(df) || !ncol(df)) {
+      notes("Tag CSV has no rows or columns; ignoring.")
+      tags_mat(NULL); tag_colors(setNames(character(), character()))
+      return(invisible())
+    }
+    # Coerce to numeric matrix, treating non-1 values as 0
+    mat <- suppressWarnings(as.matrix(df))
+    mode(mat) <- "numeric"
+    mat[is.na(mat)] <- 0
+    mat[mat != 1] <- 0
+    # Create distinct color per tag (row)
+    tag_names <- rownames(mat)
+    n <- length(tag_names)
+    if (n) {
+      # Nice distinct HCL palette (no extra deps)
+      hues <- seq(15, 375, length.out = n + 1L)[1:n]
+      cols <- grDevices::hcl(h = hues, c = 80, l = 55)
+      names(cols) <- tag_names
+      tag_colors(cols)
+    } else {
+      tag_colors(setNames(character(), character()))
+    }
+    tags_mat(mat)
+    # Report overlap with trees
+    tree_labels <- vapply(items(), `[[`, "", "label")
+    matched <- intersect(colnames(mat), tree_labels)
+    if (length(matched)) {
+      notes(paste0("Loaded tag CSV with ", nrow(mat), " tags over ", ncol(mat), " columns. ",
+                   "Matched ", length(matched), " tree name(s) in the gallery."))
+    } else {
+      notes("Loaded tag CSV but no column names matched current tree labels.")
+    }
+  }, ignoreInit = TRUE)
+
+  # Helper: tags for a given tree label
+  tags_for_tree <- function(label) {
+    mat <- tags_mat()
+    if (is.null(mat) || !length(mat)) return(character())
+    if (!(label %in% colnames(mat))) return(character())
+    inds <- which(mat[, label, drop = TRUE] == 1)
+    if (!length(inds)) return(character())
+    rownames(mat)[inds]
+  }
+
   # Download cohorts JSON
   output$download_cohorts <- downloadHandler(
     filename = function() sprintf("cohorts_%s.json", format(Sys.time(), "%Y%m%d_%H%M%S")),
@@ -417,18 +484,32 @@ server <- function(input, output, session) {
 
     if (!length(show)) return(tags$div(class = "note", "No trees in this view."))
 
+    cols <- tag_colors()
     lapply(show, function(it) {
+      lbl <- it$label
+      tgs <- tags_for_tree(lbl)
+      chips <- NULL
+      if (length(tgs)) {
+        chips <- tags$div(
+          class = "tag-strip",
+          lapply(tgs, function(tag_nm) {
+            bg <- cols[[tag_nm]] %||% "#666"
+            tags$span(class = "tag-chip", style = paste0("background:", bg, ";"), title = tag_nm, tag_nm)
+          })
+        )
+      }
       tags$div(
-        class = "card", draggable = "true", `data-id` = it$id, `data-label` = it$label,
-        tags$div(class = "filename", it$label),
+        class = "card", draggable = "true", `data-id` = it$id, `data-label` = lbl,
+        tags$div(class = "filename", lbl),
         tags$a(
           href = it$pdf_url, download = it$download_name, class = "thumb",
-          tags$img(src = it$thumb_url, class = "thumbnail", alt = paste0(it$label, " (thumbnail)")),
+          tags$img(src = it$thumb_url, class = "thumbnail", alt = paste0(lbl, " (thumbnail)")),
           tags$div(class = "popup",
-            tags$div(class = "popup-title", it$label),
-            tags$img(src = it$large_url, alt = paste0(it$label, " (preview)"))
+            tags$div(class = "popup-title", lbl),
+            tags$img(src = it$large_url, alt = paste0(lbl, " (preview)"))
           )
-        )
+        ),
+        chips
       )
     })
   })
@@ -442,6 +523,9 @@ server <- function(input, output, session) {
     )
   })
 }
+
+# small helper for NULL-coalescing within server
+`%||%` <- function(a, b) if (is.null(a) || (is.character(a) && !nzchar(a))) b else a
 
 shinyApp(ui, server)
 
