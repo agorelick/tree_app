@@ -108,7 +108,7 @@ ui <- fluidPage(
         }, true);
 
         function setupDropZone() {
-          ['cohortDrop1','cohortDrop2','cohortDrop3','cohortDrop4'].forEach(function(zoneId, idx){
+            ['cohortDrop1','cohortDrop2'].forEach(function(zoneId, idx){
             var zone = document.getElementById(zoneId); if (!zone) return;
             zone.addEventListener('dragover', function(e){ e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; zone.classList.add('over'); });
             zone.addEventListener('dragleave', function(){ zone.classList.remove('over'); });
@@ -171,10 +171,6 @@ ui <- fluidPage(
             actionLink("view_c1", label = "Cohort 1"),
             HTML("&nbsp;|&nbsp;"),
             actionLink("view_c2", label = "Cohort 2"),
-            HTML("&nbsp;|&nbsp;"),
-            actionLink("view_c3", label = "Cohort 3"),
-            HTML("&nbsp;|&nbsp;"),
-            actionLink("view_c4", label = "Cohort 4")
           ),
 
           div(class = "cohort-zone", id = "cohortDrop1",
@@ -191,21 +187,6 @@ ui <- fluidPage(
             ),
             div(class = "cohort-badges", uiOutput("cohort_badges2"))
           ),
-          div(class = "cohort-zone", id = "cohortDrop3",
-            div(class="cohort-header",
-              tags$h5(class="cohort-title","Cohort 3"),
-              actionButton("clear_c3", "Clear", class="btn btn-xs")
-            ),
-            div(class = "cohort-badges", uiOutput("cohort_badges3"))
-          ),
-          div(class = "cohort-zone", id = "cohortDrop4",
-            div(class="cohort-header",
-              tags$h5(class="cohort-title","Cohort 4"),
-              actionButton("clear_c4", "Clear", class="btn btn-xs")
-            ),
-            div(class = "cohort-badges", uiOutput("cohort_badges4"))
-          ),
-
           uiOutput("cohort_counts"),
           br(),
           downloadButton("download_cohorts", "Download cohorts JSON")
@@ -265,51 +246,46 @@ server <- function(input, output, session) {
   selected_tags <- reactiveVal(character())       # multi-select vector
 
   # Four cohorts
-  empty_cohorts <- list(`Cohort 1` = character(), `Cohort 2` = character(),
-                        `Cohort 3` = character(), `Cohort 4` = character())
+  empty_cohorts <- list(`Cohort 1` = character(), `Cohort 2` = character())
   cohort_labels <- reactiveVal(empty_cohorts)
 
-  view_mode <- reactiveVal("all")     # 'all','c1','c2','c3','c4'
+  view_mode <- reactiveVal("all")     # 'all','c1','c2'
   current_layout <- "Unrooted"
 
   # ---- Cohort counters/badges ----
   output$cohort_counts <- renderUI({
     its <- items(); n_all <- length(its)
     cls <- cohort_labels()
-    n1 <- length(cls[[1]]); n2 <- length(cls[[2]]); n3 <- length(cls[[3]]); n4 <- length(cls[[4]])
+    n1 <- length(cls[[1]]); n2 <- length(cls[[2]])
     tags$div(class = "note",
       tags$strong("Counts: "),
-      sprintf("Full cohort = %d | C1 = %d | C2 = %d | C3 = %d | C4 = %d", n_all, n1, n2, n3, n4)
+      sprintf("Full cohort = %d | C1 = %d | C2 = %d", n_all, n1, n2)
     )
   })
   output$cohort_badges1 <- renderUI({ labs <- cohort_labels()[[1]]; if (!length(labs)) return(NULL); lapply(labs, function(l) tags$span(class = "badge", title = l, l)) })
   output$cohort_badges2 <- renderUI({ labs <- cohort_labels()[[2]]; if (!length(labs)) return(NULL); lapply(labs, function(l) tags$span(class = "badge", title = l, l)) })
-  output$cohort_badges3 <- renderUI({ labs <- cohort_labels()[[3]]; if (!length(labs)) return(NULL); lapply(labs, function(l) tags$span(class = "badge", title = l, l)) })
-  output$cohort_badges4 <- renderUI({ labs <- cohort_labels()[[4]]; if (!length(labs)) return(NULL); lapply(labs, function(l) tags$span(class = "badge", title = l, l)) })
 
   # View toggles
   observeEvent(input$view_all, { view_mode("all") })
   observeEvent(input$view_c1,  { view_mode("c1") })
   observeEvent(input$view_c2,  { view_mode("c2") })
-  observeEvent(input$view_c3,  { view_mode("c3") })
-  observeEvent(input$view_c4,  { view_mode("c4") })
 
   # Clear cohorts
   observeEvent(input$clear_c1, { x <- cohort_labels(); x[[1]] <- character(); cohort_labels(x); if (view_mode()=="c1") view_mode("all") })
   observeEvent(input$clear_c2, { x <- cohort_labels(); x[[2]] <- character(); cohort_labels(x); if (view_mode()=="c2") view_mode("all") })
-  observeEvent(input$clear_c3, { x <- cohort_labels(); x[[3]] <- character(); cohort_labels(x); if (view_mode()=="c3") view_mode("all") })
-  observeEvent(input$clear_c4, { x <- cohort_labels(); x[[4]] <- character(); cohort_labels(x); if (view_mode()=="c4") view_mode("all") })
 
-  # Helper to add to cohort
-  add_to_cohort <- function(idx, lab) {
-    x <- cohort_labels()
-    cur <- x[[idx]]
-    if (!(lab %in% cur)) {
-      x[[idx]] <- c(cur, lab)
-      cohort_labels(x)
-    }
-    view_mode(paste0("c", idx))
+# Helper to add to cohort WITHOUT switching views
+add_to_cohort <- function(idx, lab) {
+  x <- cohort_labels()
+  cur <- x[[idx]]
+  if (!(lab %in% cur)) {
+    showNotification(sprintf("Added “%s” to Cohort %d", lab, idx), type = "message", duration = 2)
+    x[[idx]] <- c(cur, lab)
+    cohort_labels(x)
   }
+  # IMPORTANT: don't change view_mode here
+  # view_mode(paste0("c", idx))  # <- delete this line
+}
 
   # Map card id -> label
   id_to_label <- function(card_id) {
@@ -320,8 +296,6 @@ server <- function(input, output, session) {
 
   observeEvent(input$cohort_add1, { add_id <- input$cohort_add1$id; if (is.null(add_id) || !nzchar(add_id)) return(); lab <- id_to_label(add_id); if (!is.null(lab) && nzchar(lab)) add_to_cohort(1, lab) })
   observeEvent(input$cohort_add2, { add_id <- input$cohort_add2$id; if (is.null(add_id) || !nzchar(add_id)) return(); lab <- id_to_label(add_id); if (!is.null(lab) && nzchar(lab)) add_to_cohort(2, lab) })
-  observeEvent(input$cohort_add3, { add_id <- input$cohort_add3$id; if (is.null(add_id) || !nzchar(add_id)) return(); lab <- id_to_label(add_id); if (!is.null(lab) && nzchar(lab)) add_to_cohort(3, lab) })
-  observeEvent(input$cohort_add4, { add_id <- input$cohort_add4$id; if (is.null(add_id) || !nzchar(add_id)) return(); lab <- id_to_label(add_id); if (!is.null(lab) && nzchar(lab)) add_to_cohort(4, lab) })
 
   # -------- Asset builder ----------
   rebuild_assets <- function(layout, lst, current_cohorts = NULL) {
@@ -372,9 +346,7 @@ server <- function(input, output, session) {
       valid_labs <- vapply(out, `[[`, "", "label")
       trimmed <- list(
         `Cohort 1` = intersect(current_cohorts[[1]], valid_labs),
-        `Cohort 2` = intersect(current_cohorts[[2]], valid_labs),
-        `Cohort 3` = intersect(current_cohorts[[3]], valid_labs),
-        `Cohort 4` = intersect(current_cohorts[[4]], valid_labs)
+        `Cohort 2` = intersect(current_cohorts[[2]], valid_labs)
       )
       cohort_labels(trimmed)
     }
@@ -540,6 +512,7 @@ output$tag_cloud <- renderUI({
   )
 })
 
+
   observeEvent(input$tag_clicked, {
     tg <- input$tag_clicked
     cur <- selected_tags()
@@ -579,7 +552,7 @@ output$tag_cloud <- renderUI({
     show <- its_all
     vm <- view_mode()
     if (vm != "all") {
-      idx <- switch(vm, c1 = 1L, c2 = 2L, c3 = 3L, c4 = 4L, 0L)
+      idx <- switch(vm, c1 = 1L, c2 = 2L, 0L)
       if (idx > 0) {
         labs <- cohort_labels()[[idx]]
         if (length(labs)) {
