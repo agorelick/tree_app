@@ -1,4 +1,4 @@
-# app.R (4 draggable cohorts + JSON download + CSV tag overlays)
+# app.R (4 draggable cohorts + JSON download + CSV tag overlays + Tag cloud filter)
 library(shiny)
 library(jsonlite)
 
@@ -18,7 +18,7 @@ ui <- fluidPage(
       .thumb { position: relative; display: inline-block; cursor: pointer; width: 100%; }
       .thumbnail { width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background:#fff; border:1px solid #d0d0d0; border-radius:10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
 
-      /* Tag chips overlay */
+      /* Tag chips overlay on cards */
       .tag-strip { position: absolute; right: 8px; bottom: 8px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: calc(100% - 16px); pointer-events: none; }
       .tag-chip { font-size: 10px; line-height: 1; color: #fff; border-radius: 999px; padding: 4px 7px; box-shadow: 0 1px 2px rgba(0,0,0,.18); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
@@ -35,6 +35,13 @@ ui <- fluidPage(
       .badge { font-size: 11px; background: #eef2ff; color: #334; border: 1px solid #c8d1ff; border-radius: 999px; padding: 3px 8px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .cohort-header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
       .cohort-title { margin:0; font-size:14px; }
+
+      /* Tag cloud styles */
+      .tag-cloud-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+      .tag-cloud { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+      .tag-pill { font-size: 11px; color:#fff; border-radius: 999px; padding: 6px 10px; cursor: pointer; user-select:none; box-shadow: 0 1px 2px rgba(0,0,0,.18); }
+      .tag-pill.active { outline: 2px solid rgba(0,0,0,.25); }
+      .tag-legend { font-size:11px; color:#444; margin-top:6px; }
     ")),
     tags$script(HTML("
       (function() {
@@ -99,13 +106,19 @@ ui <- fluidPage(
       actionButton("reload_default", "Reload ./data.rds"),
       br(), br(),
 
-      # NEW: tag CSV upload
+      # ---- Tag CSV + Tag Cloud (NEW) ----
       tags$p(class = "help-text",
              strong("Optional tags CSV:"),
              " rows = tags; columns = tree names; cells == 1 indicate the tag applies."
       ),
       fileInput("tag_csv", "Upload tag matrix (CSV)", accept = c(".csv", ".txt")),
-      br(),
+      div(class = "tag-cloud-head",
+          tags$h4("Tags"),
+          actionLink("clear_tag", "Show all")
+      ),
+      uiOutput("tag_cloud"),
+      uiOutput("tag_filter_status"),
+      tags$hr(),
 
       # Layout toggle (plot type only)
       radioButtons("layout", "Tree layout",
@@ -127,7 +140,6 @@ ui <- fluidPage(
           actionLink("view_c4", label = "Cohort 4")
         ),
 
-        # Zone 1
         div(class = "cohort-zone", id = "cohortDrop1",
           div(class="cohort-header",
             tags$h5(class="cohort-title","Cohort 1"),
@@ -135,8 +147,6 @@ ui <- fluidPage(
           ),
           div(class = "cohort-badges", uiOutput("cohort_badges1"))
         ),
-
-        # Zone 2
         div(class = "cohort-zone", id = "cohortDrop2",
           div(class="cohort-header",
             tags$h5(class="cohort-title","Cohort 2"),
@@ -144,8 +154,6 @@ ui <- fluidPage(
           ),
           div(class = "cohort-badges", uiOutput("cohort_badges2"))
         ),
-
-        # Zone 3
         div(class = "cohort-zone", id = "cohortDrop3",
           div(class="cohort-header",
             tags$h5(class="cohort-title","Cohort 3"),
@@ -153,8 +161,6 @@ ui <- fluidPage(
           ),
           div(class = "cohort-badges", uiOutput("cohort_badges3"))
         ),
-
-        # Zone 4
         div(class = "cohort-zone", id = "cohortDrop4",
           div(class="cohort-header",
             tags$h5(class="cohort-title","Cohort 4"),
@@ -212,9 +218,10 @@ server <- function(input, output, session) {
   items     <- reactiveVal(list())     # rendered asset metadata
   notes     <- reactiveVal(NULL)
 
-  # NEW: tag data (matrix and colors)
-  tags_mat  <- reactiveVal(NULL)       # numeric matrix: rows = tags, cols = tree names
+  # NEW: tag data (matrix + colors + selection)
+  tags_mat   <- reactiveVal(NULL)                # numeric matrix: rows = tags, cols = tree names (1 indicates present)
   tag_colors <- reactiveVal(setNames(character(), character()))
+  selected_tag <- reactiveVal(NULL)              # single-select tag filter
 
   # Four cohorts stored as a list of character vectors
   empty_cohorts <- list(`Cohort 1` = character(), `Cohort 2` = character(),
@@ -248,7 +255,7 @@ server <- function(input, output, session) {
   observeEvent(input$view_c3,  { view_mode("c3") })
   observeEvent(input$view_c4,  { view_mode("c4") })
 
-  # Clear buttons
+  # Clear cohort buttons
   observeEvent(input$clear_c1, { x <- cohort_labels(); x[[1]] <- character(); cohort_labels(x); if (view_mode()=="c1") view_mode("all") })
   observeEvent(input$clear_c2, { x <- cohort_labels(); x[[2]] <- character(); cohort_labels(x); if (view_mode()=="c2") view_mode("all") })
   observeEvent(input$clear_c3, { x <- cohort_labels(); x[[3]] <- character(); cohort_labels(x); if (view_mode()=="c3") view_mode("all") })
@@ -323,7 +330,6 @@ server <- function(input, output, session) {
 
     items(out)
 
-    # Optionally trim cohorts to valid labels
     if (!is.null(current_cohorts)) {
       valid_labs <- vapply(out, `[[`, "", "label")
       trimmed <- list(
@@ -357,7 +363,6 @@ server <- function(input, output, session) {
     if (is.null(names(obj))) names(obj) <- paste0("item_", seq_along(obj))
     raw_list(obj)
 
-    # Reset cohorts on fresh load
     cohort_labels(empty_cohorts)
     notes(paste0("Loaded ", length(obj), " tree", if (length(obj) == 1) "" else "s",
                  if (!is.null(source_label)) paste0(" from ", source_label) else ""))
@@ -394,30 +399,31 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = TRUE)
 
-  # NEW: tag CSV loader
+  # ---- TAG CSV loader (creates color map) ----
   observeEvent(input$tag_csv, {
     req(input$tag_csv$datapath)
     df <- try(utils::read.csv(input$tag_csv$datapath, check.names = FALSE, row.names = 1), silent = TRUE)
     if (inherits(df, "try-error")) {
       notes(paste0("Failed to read tag CSV: ", attr(df, "condition")$message))
-      tags_mat(NULL); tag_colors(setNames(character(), character()))
+      tags_mat(NULL); tag_colors(setNames(character(), character())); selected_tag(NULL)
       return(invisible())
     }
     if (!nrow(df) || !ncol(df)) {
       notes("Tag CSV has no rows or columns; ignoring.")
-      tags_mat(NULL); tag_colors(setNames(character(), character()))
+      tags_mat(NULL); tag_colors(setNames(character(), character())); selected_tag(NULL)
       return(invisible())
     }
-    # Coerce to numeric matrix, treating non-1 values as 0
+
+    # Coerce and binarize: only exact 1 counts as present
     mat <- suppressWarnings(as.matrix(df))
     mode(mat) <- "numeric"
     mat[is.na(mat)] <- 0
     mat[mat != 1] <- 0
-    # Create distinct color per tag (row)
+
+    # Create distinct colors per tag (row)
     tag_names <- rownames(mat)
     n <- length(tag_names)
     if (n) {
-      # Nice distinct HCL palette (no extra deps)
       hues <- seq(15, 375, length.out = n + 1L)[1:n]
       cols <- grDevices::hcl(h = hues, c = 80, l = 55)
       names(cols) <- tag_names
@@ -426,6 +432,7 @@ server <- function(input, output, session) {
       tag_colors(setNames(character(), character()))
     }
     tags_mat(mat)
+
     # Report overlap with trees
     tree_labels <- vapply(items(), `[[`, "", "label")
     matched <- intersect(colnames(mat), tree_labels)
@@ -435,6 +442,7 @@ server <- function(input, output, session) {
     } else {
       notes("Loaded tag CSV but no column names matched current tree labels.")
     }
+    selected_tag(NULL)  # reset any previous filter
   }, ignoreInit = TRUE)
 
   # Helper: tags for a given tree label
@@ -447,26 +455,65 @@ server <- function(input, output, session) {
     rownames(mat)[inds]
   }
 
-  # Download cohorts JSON
-  output$download_cohorts <- downloadHandler(
-    filename = function() sprintf("cohorts_%s.json", format(Sys.time(), "%Y%m%d_%H%M%S")),
-    content = function(file) {
-      cls <- cohort_labels()
-      obj <- list(
-        `Cohort 1` = unname(cls[[1]]),
-        `Cohort 2` = unname(cls[[2]]),
-        `Cohort 3` = unname(cls[[3]]),
-        `Cohort 4` = unname(cls[[4]])
-      )
-      write(jsonlite::toJSON(obj, pretty = TRUE, auto_unbox = TRUE), file)
+  # ---- Tag cloud UI + behavior ----
+  output$tag_cloud <- renderUI({
+    mat <- tags_mat(); cols <- tag_colors()
+    if (is.null(mat) || !nrow(mat)) {
+      return(tags$div(class = "note", "Upload a tag CSV to enable tag filtering."))
     }
-  )
+    tg_names <- rownames(mat)
+    cur <- selected_tag()
+    # Count how many trees per tag (based on current items + CSV)
+    tree_labels <- vapply(items(), `[[`, "", "label")
+    counts <- vapply(tg_names, function(tg) {
+      if (!tg %in% rownames(mat)) return(0L)
+      colnames(mat)[which(mat[tg, , drop = TRUE] == 1)] |> intersect(tree_labels) |> length()
+    }, integer(1))
 
-  # Gallery render (filter by active cohort)
+    tags$div(class = "tag-cloud",
+      lapply(seq_along(tg_names), function(i) {
+        tg <- tg_names[[i]]
+        bg <- cols[[tg]] %||% "#666"
+        is_active <- identical(cur, tg)
+        style <- paste0("background:", bg, ";", if (is_active) "" else "")
+        # Use JS to emit a single input 'tag_clicked'
+        tags$span(
+          class = paste("tag-pill", if (is_active) "active"),
+          style = style,
+          onclick = sprintf("Shiny.setInputValue('tag_clicked', '%s', {priority: 'event'})", htmltools::htmlEscape(tg, attribute = TRUE)),
+          title = sprintf("%s (%d)", tg, counts[[tg]]),
+          sprintf("%s (%d)", tg, counts[[tg]])
+        )
+      })
+    )
+  })
+
+  observeEvent(input$tag_clicked, {
+    tg <- input$tag_clicked
+    # toggle if clicked again
+    if (!is.null(selected_tag()) && identical(selected_tag(), tg)) {
+      selected_tag(NULL)
+    } else {
+      selected_tag(tg)
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$clear_tag, {
+    selected_tag(NULL)
+  })
+
+  output$tag_filter_status <- renderUI({
+    tg <- selected_tag()
+    if (is.null(tg) || !nzchar(tg)) return(NULL)
+    tags$div(class = "tag-legend", sprintf("Filtering by tag: %s", tg))
+  })
+
+  # ---- Gallery render (cohort view + tag filter) ----
   output$gallery <- renderUI({
     its_all <- items()
     shiny::validate(shiny::need(length(its_all) > 0, "No trees to display yet. Load ./data.rds or upload a .rds file (named list of phylo)."))
 
+    # Cohort filtering first
     show <- its_all
     vm <- view_mode()
     if (vm != "all") {
@@ -480,6 +527,12 @@ server <- function(input, output, session) {
           show <- list()
         }
       }
+    }
+
+    # Tag filtering next (single-select)
+    tg <- selected_tag()
+    if (!is.null(tg) && nzchar(tg)) {
+      show <- Filter(function(x) tg %in% tags_for_tree(x$label), show)
     }
 
     if (!length(show)) return(tags$div(class = "note", "No trees in this view."))
@@ -524,7 +577,6 @@ server <- function(input, output, session) {
   })
 }
 
-# small helper for NULL-coalescing within server
 `%||%` <- function(a, b) if (is.null(a) || (is.character(a) && !nzchar(a))) b else a
 
 shinyApp(ui, server)
