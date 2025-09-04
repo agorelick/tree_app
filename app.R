@@ -6,9 +6,41 @@ if (!requireNamespace("ape", quietly = TRUE)) {
   stop("This app requires the 'ape' package. Install it with install.packages('ape').")
 }
 
+
 ui <- fluidPage(
   tags$head(
     tags$style(HTML("
+      /* --- Layout to enable independent vertical scroll --- */
+      html, body, .container-fluid { height: 100%; }
+      .page-root { display: flex; flex-direction: column; height: 100vh; }
+
+      /* Title spacing tweaks (keeps original look) */
+      .page-root > .title-panel { padding: 15px; padding-bottom: 0; }
+
+      /* Two-column app area that fills the rest of the viewport */
+      .app-wrap {
+        display: flex;
+        gap: 16px;
+        padding: 12px 12px 12px 12px;
+        flex: 1 1 auto;       /* fill available height */
+        min-height: 0;        /* critical for flex overflow scrolling */
+      }
+
+      .left-col {
+        flex: 0 0 320px;      /* fixed-ish sidebar width */
+        overflow-y: auto;     /* independent vertical scroll */
+        padding-right: 8px;
+        border-right: 1px solid #eee;
+      }
+
+      .right-col {
+        flex: 1 1 auto;       /* main area takes remaining width */
+        overflow-y: auto;     /* independent vertical scroll */
+        padding-left: 8px;
+        min-width: 0;         /* prevent overflow due to wide content */
+      }
+
+      /* --- Your existing styles (kept intact) --- */
       .help-text { color:#555; }
       .note { margin-top: 10px; font-size: 12px; color:#666; }
 
@@ -18,7 +50,6 @@ ui <- fluidPage(
       .thumb { position: relative; display: inline-block; cursor: pointer; width: 100%; }
       .thumbnail { width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background:#fff; border:1px solid #d0d0d0; border-radius:10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
 
-      /* Tag chips overlay on cards */
       .tag-strip { position: absolute; right: 8px; bottom: 8px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: calc(100% - 16px); pointer-events: none; }
       .tag-chip { font-size: 10px; line-height: 1; color: #fff; border-radius: 999px; padding: 4px 7px; box-shadow: 0 1px 2px rgba(0,0,0,.18); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
@@ -36,7 +67,6 @@ ui <- fluidPage(
       .cohort-header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
       .cohort-title { margin:0; font-size:14px; }
 
-      /* Tag cloud styles */
       .tag-cloud-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
       .tag-cloud { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
       .tag-pill { font-size: 11px; color:#fff; border-radius: 999px; padding: 6px 10px; cursor: pointer; user-select:none; box-shadow: 0 1px 2px rgba(0,0,0,.18); transition: opacity .12s ease, filter .12s ease, transform .04s ease; }
@@ -44,9 +74,9 @@ ui <- fluidPage(
       .tag-pill.inactive { opacity: 0.38; filter: grayscale(0.2); }
       .tag-legend { font-size:11px; color:#444; margin-top:6px; }
 
-      /* Filter banner above gallery */
       .filter-banner { margin: 8px 0 12px 0; padding: 8px 12px; background: #f4f7ff; border: 1px solid #cfe0ff; border-radius: 10px; font-size: 12px; color: #244; }
     ")),
+    # (Your original <script> stays unchanged)
     tags$script(HTML("
       (function() {
         function placePopup(thumb) {
@@ -70,7 +100,6 @@ ui <- fluidPage(
         window.addEventListener('scroll', function(){ document.querySelectorAll('.popup').forEach(function(p){ p.style.display='none'; }); }, { passive:true });
         window.addEventListener('resize', function(){ document.querySelectorAll('.popup').forEach(function(p){ p.style.display='none'; }); });
 
-        // Make cards draggable
         document.addEventListener('dragstart', function(e){
           var card = e.target.closest('.card'); if (!card) return;
           e.dataTransfer.effectAllowed = 'copy';
@@ -78,7 +107,6 @@ ui <- fluidPage(
           if (id) e.dataTransfer.setData('text/plain', id);
         }, true);
 
-        // Setup multiple drop zones -> input cohort_add1..4
         function setupDropZone() {
           ['cohortDrop1','cohortDrop2','cohortDrop3','cohortDrop4'].forEach(function(zoneId, idx){
             var zone = document.getElementById(zoneId); if (!zone) return;
@@ -98,99 +126,105 @@ ui <- fluidPage(
       })();
     "))
   ),
-  titlePanel("Phylo Tree Gallery (auto-loads ./data.rds)"),
-  sidebarLayout(
-    sidebarPanel(
-      tags$p(
-        class = "help-text",
-        strong("Expected input: "), code("data.rds"),
-        " should contain a ",
-        strong("named list of ", code("ape::phylo"), " objects"),
-        ". You can also upload another .rds to override."
-      ),
-      fileInput("rds", "Upload .rds (named list of phylo objects)", accept = ".rds"),
-      actionButton("reload_default", "Reload ./data.rds"),
-      br(), br(),
 
-      # ---- Tag CSV + Tag Cloud (multi-select AND) ----
-      tags$p(class = "help-text",
-             strong("Optional tags CSV:"),
-             " rows = tags; columns = tree names; cells == 1 indicate the tag applies."
-      ),
-      fileInput("tag_csv", "Upload tag matrix (CSV)", accept = c(".csv", ".txt")),
-      div(class = "tag-cloud-head",
-          tags$h4("Tags"),
-          actionLink("clear_tag", "Show all")
-      ),
-      uiOutput("tag_cloud"),
-      uiOutput("tag_filter_status"),
-      tags$hr(),
-
-      # Layout toggle
-      radioButtons("layout", "Tree layout",
-                   choices = c("Unrooted", "Rooted"),
-                   selected = "Unrooted", inline = TRUE),
-
-      # Cohort controls
-      div(class = "cohort-section",
-        tags$h4("Cohorts"),
-        div(class = "cohort-actions",
-          actionLink("view_all", label = "Full cohort"),
-          HTML("&nbsp;|&nbsp;"),
-          actionLink("view_c1", label = "Cohort 1"),
-          HTML("&nbsp;|&nbsp;"),
-          actionLink("view_c2", label = "Cohort 2"),
-          HTML("&nbsp;|&nbsp;"),
-          actionLink("view_c3", label = "Cohort 3"),
-          HTML("&nbsp;|&nbsp;"),
-          actionLink("view_c4", label = "Cohort 4")
-        ),
-
-        div(class = "cohort-zone", id = "cohortDrop1",
-          div(class="cohort-header",
-            tags$h5(class="cohort-title","Cohort 1"),
-            actionButton("clear_c1", "Clear", class="btn btn-xs")
-          ),
-          div(class = "cohort-badges", uiOutput("cohort_badges1"))
-        ),
-        div(class = "cohort-zone", id = "cohortDrop2",
-          div(class="cohort-header",
-            tags$h5(class="cohort-title","Cohort 2"),
-            actionButton("clear_c2", "Clear", class="btn btn-xs")
-          ),
-          div(class = "cohort-badges", uiOutput("cohort_badges2"))
-        ),
-        div(class = "cohort-zone", id = "cohortDrop3",
-          div(class="cohort-header",
-            tags$h5(class="cohort-title","Cohort 3"),
-            actionButton("clear_c3", "Clear", class="btn btn-xs")
-          ),
-          div(class = "cohort-badges", uiOutput("cohort_badges3"))
-        ),
-        div(class = "cohort-zone", id = "cohortDrop4",
-          div(class="cohort-header",
-            tags$h5(class="cohort-title","Cohort 4"),
-            actionButton("clear_c4", "Clear", class="btn btn-xs")
-          ),
-          div(class = "cohort-badges", uiOutput("cohort_badges4"))
-        ),
-
-        uiOutput("cohort_counts"),
-        br(),
-        downloadButton("download_cohorts", "Download cohorts JSON")
-      ),
-
-      br(),
-      uiOutput("status"),
-      width = 3
+  # Root container with title + 2 scrollable columns
+  div(class = "page-root",
+    div(class = "title-panel",
+      titlePanel("Phylo Tree Gallery (auto-loads ./data.rds)")
     ),
-    mainPanel(
-      width = 9,
-      uiOutput("filter_banner"),  # <- banner above gallery
-      uiOutput("gallery", container = div, class = "gallery")
+    div(class = "app-wrap",
+      # LEFT: control panel (was sidebarPanel)
+      div(class = "left-col",
+        tags$p(
+          class = "help-text",
+          strong("Expected input: "), code("data.rds"),
+          " should contain a ",
+          strong("named list of ", code("ape::phylo"), " objects"),
+          ". You can also upload another .rds to override."
+        ),
+        fileInput("rds", "Upload .rds (named list of phylo objects)", accept = ".rds"),
+        actionButton("reload_default", "Reload ./data.rds"),
+        br(), br(),
+
+        tags$p(class = "help-text",
+               strong("Optional tags CSV:"),
+               " rows = tags; columns = tree names; cells == 1 indicate the tag applies."
+        ),
+        fileInput("tag_csv", "Upload tag matrix (CSV)", accept = c(".csv", ".txt")),
+        div(class = "tag-cloud-head",
+            tags$h4("Tags"),
+            actionLink("clear_tag", "Show all")
+        ),
+        uiOutput("tag_cloud"),
+        uiOutput("tag_filter_status"),
+        tags$hr(),
+
+        radioButtons("layout", "Tree layout",
+                     choices = c("Unrooted", "Rooted"),
+                     selected = "Unrooted", inline = TRUE),
+
+        div(class = "cohort-section",
+          tags$h4("Cohorts"),
+          div(class = "cohort-actions",
+            actionLink("view_all", label = "Full cohort"),
+            HTML("&nbsp;|&nbsp;"),
+            actionLink("view_c1", label = "Cohort 1"),
+            HTML("&nbsp;|&nbsp;"),
+            actionLink("view_c2", label = "Cohort 2"),
+            HTML("&nbsp;|&nbsp;"),
+            actionLink("view_c3", label = "Cohort 3"),
+            HTML("&nbsp;|&nbsp;"),
+            actionLink("view_c4", label = "Cohort 4")
+          ),
+
+          div(class = "cohort-zone", id = "cohortDrop1",
+            div(class="cohort-header",
+              tags$h5(class="cohort-title","Cohort 1"),
+              actionButton("clear_c1", "Clear", class="btn btn-xs")
+            ),
+            div(class = "cohort-badges", uiOutput("cohort_badges1"))
+          ),
+          div(class = "cohort-zone", id = "cohortDrop2",
+            div(class="cohort-header",
+              tags$h5(class="cohort-title","Cohort 2"),
+              actionButton("clear_c2", "Clear", class="btn btn-xs")
+            ),
+            div(class = "cohort-badges", uiOutput("cohort_badges2"))
+          ),
+          div(class = "cohort-zone", id = "cohortDrop3",
+            div(class="cohort-header",
+              tags$h5(class="cohort-title","Cohort 3"),
+              actionButton("clear_c3", "Clear", class="btn btn-xs")
+            ),
+            div(class = "cohort-badges", uiOutput("cohort_badges3"))
+          ),
+          div(class = "cohort-zone", id = "cohortDrop4",
+            div(class="cohort-header",
+              tags$h5(class="cohort-title","Cohort 4"),
+              actionButton("clear_c4", "Clear", class="btn btn-xs")
+            ),
+            div(class = "cohort-badges", uiOutput("cohort_badges4"))
+          ),
+
+          uiOutput("cohort_counts"),
+          br(),
+          downloadButton("download_cohorts", "Download cohorts JSON")
+        ),
+
+        br(),
+        uiOutput("status")
+      ),
+
+      # RIGHT: tree view (was mainPanel)
+      div(class = "right-col",
+        uiOutput("filter_banner"),
+        uiOutput("gallery", container = div, class = "gallery")
+      )
     )
   )
 )
+
+
 
 server <- function(input, output, session) {
   prefix <- paste0("trees-", substr(session$token, 1, 8))
