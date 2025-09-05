@@ -1,6 +1,8 @@
 # app.R (4 cohorts + JSON + CSV tag overlays + Tag cloud AND filter + banner)
 library(shiny)
 library(jsonlite)
+library(ggplot2)
+
 
 if (!requireNamespace("ape", quietly = TRUE)) {
   stop("This app requires the 'ape' package. Install it with install.packages('ape').")
@@ -199,11 +201,17 @@ ui <- fluidPage(
             div(class = "cohort-badges", uiOutput("cohort_badges2"))
           ),
           uiOutput("cohort_counts"),
+          div(class = "cohort-actions",
+            actionButton("test_boxplot", "Test")
+          ),
           br(),
           downloadButton("download_cohorts", "Download cohorts JSON")
         ),
 
         br(),
+        tags$hr(),
+        tags$h4("Plot"),
+        plotOutput("cohort_plot", height = "260px"),
         uiOutput("status")
       ),
 
@@ -680,6 +688,49 @@ output$tag_cloud <- renderUI({
       tags$pre(style = "white-space: pre-wrap; font-size: 12px; margin: 6px 0 0 0;", txt)
     )
   })
+
+boxplot_data <- eventReactive(input$test_boxplot, {
+  cls <- cohort_labels()
+  lst <- raw_list()
+  if (is.null(lst) || !length(lst)) {
+    return(data.frame(Cohort = character(), Tips = integer()))
+  }
+  get_counts <- function(labels) {
+    labs <- intersect(labels, names(lst))
+    if (!length(labs)) return(integer(0))
+    vapply(labs, function(l) {
+      tr <- lst[[l]]
+      if (!is.null(tr) && !is.null(tr$tip.label)) length(tr$tip.label) else NA_integer_
+    }, integer(1))
+  }
+  c1 <- get_counts(cls[[1]])
+  c2 <- get_counts(cls[[2]])
+  data.frame(
+    Cohort = c(rep("Cohort 1", length(c1)), rep("Cohort 2", length(c2))),
+    Tips   = c(c1, c2),
+    stringsAsFactors = FALSE
+  )
+}, ignoreInit = TRUE)
+
+output$cohort_plot <- renderPlot({
+  df <- boxplot_data()
+  if (is.null(df) || !nrow(df)) {
+    # Empty ggplot “placeholder”
+    ggplot() +
+      theme_minimal() +
+      theme(
+        axis.text  = element_blank(),
+        axis.title = element_blank(),
+        panel.grid = element_blank()
+      )
+  } else {
+    ggplot(df, aes(x = Cohort, y = Tips)) +
+      geom_boxplot() +
+      labs(x = NULL, y = "Number of tips") +
+      theme_minimal()
+  }
+})
+
 }
 
 `%||%` <- function(a, b) if (is.null(a) || (is.character(a) && !nzchar(a))) b else a
