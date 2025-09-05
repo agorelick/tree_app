@@ -2,6 +2,8 @@
 library(shiny)
 library(jsonlite)
 library(ggplot2)
+library(rds)
+library(ggpubr)
 
 
 if (!requireNamespace("ape", quietly = TRUE)) {
@@ -725,7 +727,10 @@ output$cohort_plot <- renderPlot({
       )
   } else {
     ggplot(df, aes(x = Cohort, y = Tips)) +
-      geom_boxplot() +
+      scale_y_continuous(limits=c(min(df$Tips),max(df$Tips)*1.025)) +
+      geom_point(position=position_jitter(width=0.15, height=0, seed=42), pch=21, size=4, color='white', stroke=0.25, aes(fill=Cohort)) +
+      stat_compare_means() +
+      geom_boxplot(fill=NA,outlier.shape=NA) +
       labs(x = NULL, y = "Number of tips") +
       theme_minimal()
   }
