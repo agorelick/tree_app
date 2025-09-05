@@ -1,15 +1,17 @@
 # app.R (4 cohorts + JSON + CSV tag overlays + Tag cloud AND filter + banner)
+# Modified to expect a named list of DISTANCE MATRICES in the .rds and
+# auto-convert each to a phylo tree via ape::nj()
+
 library(shiny)
 library(jsonlite)
 library(ggplot2)
 library(rds)
 library(ggpubr)
-
+library(phytools)
 
 if (!requireNamespace("ape", quietly = TRUE)) {
   stop("This app requires the 'ape' package. Install it with install.packages('ape').")
 }
-
 
 ui <- fluidPage(
   tags$head(
@@ -90,6 +92,11 @@ ui <- fluidPage(
       .badge-close:hover { filter: brightness(0.95); }
 
       .filter-banner { margin: 8px 0 12px 0; padding: 8px 12px; background: #f4f7ff; border: 1px solid #cfe0ff; border-radius: 10px; font-size: 12px; color: #244; }
+
+      /* Compact the cohort type dropdowns inside the boxes */
+      .cohort-select .form-group { margin-top: 6px; margin-bottom: 0; }
+      .cohort-select label { font-size: 12px; margin-bottom: 4px; color:#334; }
+      .cohort-select select.form-control { padding: 2px 6px; height: 30px; }
     ")),
     # (Your original <script> stays unchanged)
     tags$script(HTML("
@@ -154,10 +161,10 @@ ui <- fluidPage(
           class = "help-text",
           strong("Expected input: "), code("data.rds"),
           " should contain a ",
-          strong("named list of ", code("ape::phylo"), " objects"),
-          ". You can also upload another .rds to override."
+          strong("named list of distance matrices (class ", code("matrix"), ")"),
+          ". Each matrix will be converted to a tree with ", code("ape::nj()"), "."
         ),
-        fileInput("rds", "Upload .rds (named list of phylo objects)", accept = ".rds"),
+        fileInput("rds", "Upload .rds (named list of distance matrices)", accept = ".rds"),
         actionButton("reload_default", "Reload ./data.rds"),
         br(), br(),
 
@@ -193,14 +200,28 @@ ui <- fluidPage(
               tags$h5(class="cohort-title","Cohort 1"),
               actionButton("clear_c1", "Clear", class="btn btn-xs")
             ),
-            div(class = "cohort-badges", uiOutput("cohort_badges1"))
+            div(class = "cohort-badges", uiOutput("cohort_badges1")),
+            div(class = "cohort-select",
+                selectInput(
+                  "cohort1_type", "Metastasis types",
+                  choices = c("All", "Peritoneum", "Liver"),
+                  selected = NULL, width = "100%", selectize = FALSE
+                )
+            )
           ),
           div(class = "cohort-zone", id = "cohortDrop2",
             div(class="cohort-header",
               tags$h5(class="cohort-title","Cohort 2"),
               actionButton("clear_c2", "Clear", class="btn btn-xs")
             ),
-            div(class = "cohort-badges", uiOutput("cohort_badges2"))
+            div(class = "cohort-badges", uiOutput("cohort_badges2")),
+            div(class = "cohort-select",
+                selectInput(
+                  "cohort2_type", "Metastasis types",
+                  choices = c("All", "Peritoneum", "Liver"),
+                  selected = NULL, width = "100%", selectize = FALSE
+                )
+            )
           ),
           uiOutput("cohort_counts"),
           div(class = "cohort-actions",
@@ -225,8 +246,6 @@ ui <- fluidPage(
     )
   )
 )
-
-
 
 server <- function(input, output, session) {
   prefix <- paste0("trees-", substr(session$token, 1, 8))
@@ -257,7 +276,7 @@ server <- function(input, output, session) {
   }
 
   # --- Reactive state ---
-  raw_list  <- reactiveVal(NULL)       # named list of phylo objects
+  raw_list  <- reactiveVal(NULL)       # named list of phylo objects (after conversion)
   items     <- reactiveVal(list())     # rendered asset metadata
   notes     <- reactiveVal(NULL)
 
@@ -266,7 +285,7 @@ server <- function(input, output, session) {
   tag_colors  <- reactiveVal(setNames(character(), character()))
   selected_tags <- reactiveVal(character())       # multi-select vector
 
-  # Four cohorts
+  # Two cohorts
   empty_cohorts <- list(`Cohort 1` = character(), `Cohort 2` = character())
   cohort_labels <- reactiveVal(empty_cohorts)
 
@@ -285,49 +304,48 @@ server <- function(input, output, session) {
   })
 
   output$cohort_badges1 <- renderUI({
-  labs <- cohort_labels()[[1]]
-  if (!length(labs)) return(NULL)
-  lapply(labs, function(l) {
-    # escape for inclusion in a JS string
-    l_js <- htmltools::htmlEscape(l, attribute = TRUE)
-    tags$span(
-      class = "badge",
-      title = l,
-      l,
+    labs <- cohort_labels()[[1]]
+    if (!length(labs)) return(NULL)
+    lapply(labs, function(l) {
+      l_js <- htmltools::htmlEscape(l, attribute = TRUE)
       tags$span(
-        class = "badge-close",
-        title = sprintf("Remove “%s” from Cohort 1", l),
-        onclick = sprintf(
-          "Shiny.setInputValue('cohort_remove', { idx: 1, label: '%s', nonce: Date.now() }, {priority: 'event'});",
-          l_js
-        ),
-        "\u00D7"  # ×
+        class = "badge",
+        title = l,
+        l,
+        tags$span(
+          class = "badge-close",
+          title = sprintf("Remove “%s” from Cohort 1", l),
+          onclick = sprintf(
+            "Shiny.setInputValue('cohort_remove', { idx: 1, label: '%s', nonce: Date.now() }, {priority: 'event'});",
+            l_js
+          ),
+          "\u00D7"
+        )
       )
-    )
+    })
   })
-})
 
-output$cohort_badges2 <- renderUI({
-  labs <- cohort_labels()[[2]]
-  if (!length(labs)) return(NULL)
-  lapply(labs, function(l) {
-    l_js <- htmltools::htmlEscape(l, attribute = TRUE)
-    tags$span(
-      class = "badge",
-      title = l,
-      l,
+  output$cohort_badges2 <- renderUI({
+    labs <- cohort_labels()[[2]]
+    if (!length(labs)) return(NULL)
+    lapply(labs, function(l) {
+      l_js <- htmltools::htmlEscape(l, attribute = TRUE)
       tags$span(
-        class = "badge-close",
-        title = sprintf("Remove “%s” from Cohort 2", l),
-        onclick = sprintf(
-          "Shiny.setInputValue('cohort_remove', { idx: 2, label: '%s', nonce: Date.now() }, {priority: 'event'});",
-          l_js
-        ),
-        "\u00D7"
+        class = "badge",
+        title = l,
+        l,
+        tags$span(
+          class = "badge-close",
+          title = sprintf("Remove “%s” from Cohort 2", l),
+          onclick = sprintf(
+            "Shiny.setInputValue('cohort_remove', { idx: 2, label: '%s', nonce: Date.now() }, {priority: 'event'});",
+            l_js
+          ),
+          "\u00D7"
+        )
       )
-    )
+    })
   })
-})
 
   # View toggles
   observeEvent(input$view_all, { view_mode("all") })
@@ -338,18 +356,16 @@ output$cohort_badges2 <- renderUI({
   observeEvent(input$clear_c1, { x <- cohort_labels(); x[[1]] <- character(); cohort_labels(x); if (view_mode()=="c1") view_mode("all") })
   observeEvent(input$clear_c2, { x <- cohort_labels(); x[[2]] <- character(); cohort_labels(x); if (view_mode()=="c2") view_mode("all") })
 
-# Helper to add to cohort WITHOUT switching views
-add_to_cohort <- function(idx, lab) {
-  x <- cohort_labels()
-  cur <- x[[idx]]
-  if (!(lab %in% cur)) {
-    showNotification(sprintf("Added “%s” to Cohort %d", lab, idx), type = "message", duration = 2)
-    x[[idx]] <- c(cur, lab)
-    cohort_labels(x)
+  # Helper to add to cohort WITHOUT switching views
+  add_to_cohort <- function(idx, lab) {
+    x <- cohort_labels()
+    cur <- x[[idx]]
+    if (!(lab %in% cur)) {
+      showNotification(sprintf("Added “%s” to Cohort %d", lab, idx), type = "message", duration = 2)
+      x[[idx]] <- c(cur, lab)
+      cohort_labels(x)
+    }
   }
-  # IMPORTANT: don't change view_mode here
-  # view_mode(paste0("c", idx))  # <- delete this line
-}
 
   # Map card id -> label
   id_to_label <- function(card_id) {
@@ -361,17 +377,16 @@ add_to_cohort <- function(idx, lab) {
   observeEvent(input$cohort_add1, { add_id <- input$cohort_add1$id; if (is.null(add_id) || !nzchar(add_id)) return(); lab <- id_to_label(add_id); if (!is.null(lab) && nzchar(lab)) add_to_cohort(1, lab) })
   observeEvent(input$cohort_add2, { add_id <- input$cohort_add2$id; if (is.null(add_id) || !nzchar(add_id)) return(); lab <- id_to_label(add_id); if (!is.null(lab) && nzchar(lab)) add_to_cohort(2, lab) })
 
-observeEvent(input$cohort_remove, {
-  info <- input$cohort_remove
-  req(info$idx, info$label)
-  x <- cohort_labels()
-  idx <- as.integer(info$idx)
-  if (idx >= 1 && idx <= length(x)) {
-    x[[idx]] <- setdiff(x[[idx]], info$label)
-    cohort_labels(x)
-  }
-}, ignoreInit = TRUE)
-
+  observeEvent(input$cohort_remove, {
+    info <- input$cohort_remove
+    req(info$idx, info$label)
+    x <- cohort_labels()
+    idx <- as.integer(info$idx)
+    if (idx >= 1 && idx <= length(x)) {
+      x[[idx]] <- setdiff(x[[idx]], info$label)
+      cohort_labels(x)
+    }
+  }, ignoreInit = TRUE)
 
   # -------- Asset builder ----------
   rebuild_assets <- function(layout, lst, current_cohorts = NULL) {
@@ -433,6 +448,39 @@ observeEvent(input$cohort_remove, {
   }
 
   # -------- Loaders ----------
+  # Expect a named list of distance matrices; convert each to a phylo via ape::nj()
+  as_dist_safe <- function(x) {
+    if (inherits(x, "dist")) return(x)
+    if (is.matrix(x)) {
+      if (!is.numeric(x)) return(NULL)
+      if (nrow(x) != ncol(x)) return(NULL)
+      # Force symmetry and zero diagonal if close
+      if (!isTRUE(all.equal(x, t(x), tolerance = 1e-8))) return(NULL)
+      diag(x) <- 0
+      return(as.dist(x))
+    }
+    NULL
+  }
+
+  convert_list_mats_to_phylo <- function(obj) {
+    nms <- names(obj); if (is.null(nms)) nms <- paste0("item_", seq_along(obj))
+    phy <- list(); ok <- 0L; fail <- 0L
+    out_names <- character(0)
+    for (i in seq_along(obj)) {
+      nm <- nms[[i]]; el <- obj[[i]]
+      d <- as_dist_safe(el)
+      if (is.null(d)) { fail <- fail + 1L; next }
+      tr <- try(ape::nj(d), silent=T)
+      tr <- try(phytools::reroot(tr, grep('^N',tr$tip.label)), silent=T)
+      if (inherits(tr, "try-error") || !inherits(tr, "phylo")) { fail <- fail + 1L; next }
+      phy[[length(phy)+1L]] <- tr
+      out_names <- c(out_names, nm)
+      ok <- ok + 1L
+    }
+    if (length(phy)) names(phy) <- out_names
+    list(phy = phy, ok = ok, fail = fail)
+  }
+
   load_from_path <- function(path, source_label = NULL) {
     obj <- try(readRDS(path), silent = TRUE)
     if (inherits(obj, "try-error")) {
@@ -443,17 +491,31 @@ observeEvent(input$cohort_remove, {
     }
     if (!is.list(obj)) {
       items(list()); cohort_labels(empty_cohorts); view_mode("all"); raw_list(NULL)
-      notes("The RDS must contain a named list of ape::phylo objects.")
+      notes("The RDS must contain a named list of distance matrices (class 'matrix' or 'dist').")
       return(invisible(FALSE))
     }
     if (is.null(names(obj))) names(obj) <- paste0("item_", seq_along(obj))
-    raw_list(obj)
 
+    conv <- convert_list_mats_to_phylo(obj)
+    phy_list <- conv$phy
+
+    if (!length(phy_list)) {
+      items(list()); cohort_labels(empty_cohorts); view_mode("all"); raw_list(NULL)
+      notes("No valid distance matrices found (must be symmetric numeric matrices or 'dist').")
+      return(invisible(FALSE))
+    }
+
+    raw_list(phy_list)
     cohort_labels(empty_cohorts)
-    notes(paste0("Loaded ", length(obj), " tree", if (length(obj) == 1) "" else "s",
-                 if (!is.null(source_label)) paste0(" from ", source_label) else ""))
+    notes(paste0(
+      "Loaded ", length(obj), " matrices",
+      if (!is.null(source_label)) paste0(" from ", source_label) else "",
+      "; converted ", conv$ok, " to trees via ape::nj()",
+      if (conv$fail) paste0(" (", conv$fail, " failed)") else "",
+      "."
+    ))
 
-    rebuild_assets(current_layout, obj, current_cohorts = empty_cohorts)
+    rebuild_assets(current_layout, phy_list, current_cohorts = empty_cohorts)
     view_mode("all")
     invisible(TRUE)
   }
@@ -461,7 +523,7 @@ observeEvent(input$cohort_remove, {
   if (file.exists("data.rds")) {
     load_from_path("data.rds", source_label = "./data.rds")
   } else {
-    notes("Tip: place a file named data.rds (named list of ape::phylo) in the app's working directory to auto-load on startup.")
+    notes("Tip: place a file named data.rds (named list of distance matrices) in the app's working directory to auto-load on startup.")
   }
 
   observeEvent(input$reload_default, {
@@ -535,59 +597,55 @@ observeEvent(input$cohort_remove, {
     rownames(mat)[inds]
   }
 
+  output$tag_cloud <- renderUI({
+    mat  <- tags_mat()
+    cols <- tag_colors()
+    if (is.null(mat) || !nrow(mat)) {
+      return(tags$div(class = "note", "Upload a tag CSV to enable tag filtering."))
+    }
 
-output$tag_cloud <- renderUI({
-  mat  <- tags_mat()
-  cols <- tag_colors()
-  if (is.null(mat) || !nrow(mat)) {
-    return(tags$div(class = "note", "Upload a tag CSV to enable tag filtering."))
-  }
+    tg_names <- rownames(mat)
+    sel <- selected_tags()
 
-  tg_names <- rownames(mat)
-  sel <- selected_tags()
+    its_all <- items()
+    vm <- view_mode()
+    tree_subset <- if (identical(vm, "all")) {
+      its_all
+    } else {
+      idx  <- switch(vm, c1 = 1L, c2 = 2L, 0L)
+      labs <- if (idx > 0) cohort_labels()[[idx]] else character()
+      if (length(labs)) Filter(function(x) x$label %in% labs, its_all) else list()
+    }
+    tree_labels <- if (length(tree_subset)) vapply(tree_subset, `[[`, "", "label") else character()
 
-  # Always make tree_subset a LIST of item records, never a character vector
-  its_all <- items()
-  vm <- view_mode()
-  tree_subset <- if (identical(vm, "all")) {
-    its_all
-  } else {
-    idx  <- switch(vm, c1 = 1L, c2 = 2L, c3 = 3L, c4 = 4L, 0L)
-    labs <- if (idx > 0) cohort_labels()[[idx]] else character()
-    if (length(labs)) Filter(function(x) x$label %in% labs, its_all) else list()
-  }
-  tree_labels <- if (length(tree_subset)) vapply(tree_subset, `[[`, "", "label") else character()
+    counts <- vapply(tg_names, function(tg) {
+      if (!tg %in% rownames(mat)) return(0L)
+      have_tg <- colnames(mat)[mat[tg, , drop = TRUE] == 1]
+      length(intersect(have_tg, tree_labels))
+    }, integer(1))
+    names(counts) <- tg_names
 
-  # Count how many trees carry each tag (within current cohort view)
-  counts <- vapply(tg_names, function(tg) {
-    if (!tg %in% rownames(mat)) return(0L)
-    have_tg <- colnames(mat)[mat[tg, , drop = TRUE] == 1]
-    length(intersect(have_tg, tree_labels))
-  }, integer(1))
-  names(counts) <- tg_names
-
-  tags$div(class = "tag-cloud",
-    lapply(seq_along(tg_names), function(i) {
-      tg <- tg_names[[i]]
-      bg <- cols[[tg]] %||% "#666"
-      is_active     <- tg %in% sel
-      has_selection <- length(sel) > 0
-      cls <- paste("tag-pill", if (is_active) "active" else if (has_selection) "inactive")
-      cnt <- counts[i]  # avoid potential name lookup issues
-      tags$span(
-        class = cls,
-        style = paste0("background:", bg, ";"),
-        onclick = sprintf(
-          "Shiny.setInputValue('tag_clicked', '%s', {priority: 'event'})",
-          htmltools::htmlEscape(tg, attribute = TRUE)
-        ),
-        title = sprintf("%s (%d)", tg, cnt),
-        sprintf("%s (%d)", tg, cnt)
-      )
-    })
-  )
-})
-
+    tags$div(class = "tag-cloud",
+      lapply(seq_along(tg_names), function(i) {
+        tg <- tg_names[[i]]
+        bg <- cols[[tg]] %||% "#666"
+        is_active     <- tg %in% sel
+        has_selection <- length(sel) > 0
+        cls <- paste("tag-pill", if (is_active) "active" else if (has_selection) "inactive")
+        cnt <- counts[i]
+        tags$span(
+          class = cls,
+          style = paste0("background:", bg, ";"),
+          onclick = sprintf(
+            "Shiny.setInputValue('tag_clicked', '%s', {priority: 'event'})",
+            htmltools::htmlEscape(tg, attribute = TRUE)
+          ),
+          title = sprintf("%s (%d)", tg, cnt),
+          sprintf("%s (%d)", tg, cnt)
+        )
+      })
+    )
+  })
 
   observeEvent(input$tag_clicked, {
     tg <- input$tag_clicked
@@ -622,7 +680,7 @@ output$tag_cloud <- renderUI({
   # ---- Gallery render (cohort view + AND tag filter) ----
   output$gallery <- renderUI({
     its_all <- items()
-    shiny::validate(shiny::need(length(its_all) > 0, "No trees to display yet. Load ./data.rds or upload a .rds file (named list of phylo)."))
+    shiny::validate(shiny::need(length(its_all) > 0, "No trees to display yet. Load ./data.rds or upload a .rds file (named list of distance matrices)."))
 
     # Cohort filtering first
     show <- its_all
@@ -691,51 +749,49 @@ output$tag_cloud <- renderUI({
     )
   })
 
-boxplot_data <- eventReactive(input$test_boxplot, {
-  cls <- cohort_labels()
-  lst <- raw_list()
-  if (is.null(lst) || !length(lst)) {
-    return(data.frame(Cohort = character(), Tips = integer()))
-  }
-  get_counts <- function(labels) {
-    labs <- intersect(labels, names(lst))
-    if (!length(labs)) return(integer(0))
-    vapply(labs, function(l) {
-      tr <- lst[[l]]
-      if (!is.null(tr) && !is.null(tr$tip.label)) length(tr$tip.label) else NA_integer_
-    }, integer(1))
-  }
-  c1 <- get_counts(cls[[1]])
-  c2 <- get_counts(cls[[2]])
-  data.frame(
-    Cohort = c(rep("Cohort 1", length(c1)), rep("Cohort 2", length(c2))),
-    Tips   = c(c1, c2),
-    stringsAsFactors = FALSE
-  )
-}, ignoreInit = TRUE)
+  boxplot_data <- eventReactive(input$test_boxplot, {
+    cls <- cohort_labels()
+    lst <- raw_list()
+    if (is.null(lst) || !length(lst)) {
+      return(data.frame(Cohort = character(), Tips = integer()))
+    }
+    get_counts <- function(labels) {
+      labs <- intersect(labels, names(lst))
+      if (!length(labs)) return(integer(0))
+      vapply(labs, function(l) {
+        tr <- lst[[l]]
+        if (!is.null(tr) && !is.null(tr$tip.label)) length(tr$tip.label) else NA_integer_
+      }, integer(1))
+    }
+    c1 <- get_counts(cls[[1]])
+    c2 <- get_counts(cls[[2]])
+    data.frame(
+      Cohort = c(rep("Cohort 1", length(c1)), rep("Cohort 2", length(c2))),
+      Tips   = c(c1, c2),
+      stringsAsFactors = FALSE
+    )
+  }, ignoreInit = TRUE)
 
-output$cohort_plot <- renderPlot({
-  df <- boxplot_data()
-  if (is.null(df) || !nrow(df)) {
-    # Empty ggplot “placeholder”
-    ggplot() +
-      theme_minimal() +
-      theme(
-        axis.text  = element_blank(),
-        axis.title = element_blank(),
-        panel.grid = element_blank()
-      )
-  } else {
-    ggplot(df, aes(x = Cohort, y = Tips)) +
-      scale_y_continuous(limits=c(min(df$Tips),max(df$Tips)*1.025)) +
-      geom_point(position=position_jitter(width=0.15, height=0, seed=42), pch=21, size=4, color='white', stroke=0.25, aes(fill=Cohort)) +
-      stat_compare_means() +
-      geom_boxplot(fill=NA,outlier.shape=NA) +
-      labs(x = NULL, y = "Number of tips") +
-      theme_minimal()
-  }
-})
-
+  output$cohort_plot <- renderPlot({
+    df <- boxplot_data()
+    if (is.null(df) || !nrow(df)) {
+      ggplot() +
+        theme_minimal() +
+        theme(
+          axis.text  = element_blank(),
+          axis.title = element_blank(),
+          panel.grid = element_blank()
+        )
+    } else {
+      ggplot(df, aes(x = Cohort, y = Tips)) +
+        scale_y_continuous(limits=c(min(df$Tips),max(df$Tips)*1.025)) +
+        geom_point(position=position_jitter(width=0.15, height=0, seed=42), pch=21, size=4, color='white', stroke=0.25, aes(fill=Cohort)) +
+        stat_compare_means() +
+        geom_boxplot(fill=NA,outlier.shape=NA) +
+        labs(x = NULL, y = "Number of tips") +
+        theme_minimal()
+    }
+  })
 }
 
 `%||%` <- function(a, b) if (is.null(a) || (is.character(a) && !nzchar(a))) b else a
