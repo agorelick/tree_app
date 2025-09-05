@@ -185,6 +185,10 @@ ui <- fluidPage(
                      choices = c("Unrooted", "Rooted"),
                      selected = "Unrooted", inline = TRUE),
 
+
+
+
+
         div(class = "cohort-section",
           tags$h4("Cohorts"),
           div(class = "cohort-actions",
@@ -192,7 +196,7 @@ ui <- fluidPage(
             HTML("&nbsp;|&nbsp;"),
             actionLink("view_c1", label = "Cohort 1"),
             HTML("&nbsp;|&nbsp;"),
-            actionLink("view_c2", label = "Cohort 2"),
+            actionLink("view_c2", label = "Cohort 2")
           ),
 
           div(class = "cohort-zone", id = "cohortDrop1",
@@ -200,36 +204,53 @@ ui <- fluidPage(
               tags$h5(class="cohort-title","Cohort 1"),
               actionButton("clear_c1", "Clear", class="btn btn-xs")
             ),
-            div(class = "cohort-badges", uiOutput("cohort_badges1")),
-            div(class = "cohort-select",
-                selectInput(
-                  "cohort1_type", "Metastasis types",
-                  choices = c("All", "Peritoneum", "Liver"),
-                  selected = NULL, width = "100%", selectize = FALSE
-                )
+            div(class = "cohort-badges", uiOutput("cohort_badges1"))
+          ),
+          
+	  div(class = "cohort-select",
+            selectInput(
+              "cohort1_type", "Cohort 1 metastasis type",
+              choices = c("All", "Peritoneum", "Liver"),
+              selected = NULL, width = "100%", selectize = FALSE
             )
           ),
+          div(class = "cohort-select",
+            selectInput(
+              "cohort1_tx", "Cohort 1 metastasis treatment",
+              choices = c("No preference", "Untreated", "Any systemic chemo", "HIPEC only"),
+              selected = "No preference", width = "100%", selectize = FALSE
+            )
+          ),
+
           div(class = "cohort-zone", id = "cohortDrop2",
             div(class="cohort-header",
               tags$h5(class="cohort-title","Cohort 2"),
               actionButton("clear_c2", "Clear", class="btn btn-xs")
             ),
-            div(class = "cohort-badges", uiOutput("cohort_badges2")),
-            div(class = "cohort-select",
-                selectInput(
-                  "cohort2_type", "Metastasis types",
-                  choices = c("All", "Peritoneum", "Liver"),
-                  selected = NULL, width = "100%", selectize = FALSE
-                )
+            div(class = "cohort-badges", uiOutput("cohort_badges2"))
+          ),
+          
+	  div(class = "cohort-select",
+            selectInput(
+              "cohort2_type", "Cohort 2 metastasis type",
+              choices = c("All", "Peritoneum", "Liver"),
+              selected = NULL, width = "100%", selectize = FALSE
             )
           ),
-          uiOutput("cohort_counts"),
-          div(class = "cohort-actions",
-            actionButton("test_boxplot", "Test")
+          div(class = "cohort-select",
+            selectInput(
+              "cohort2_tx", "Cohort 2 metastasis treatment",
+              choices = c("No preference", "Untreated", "Any systemic chemo", "HIPEC only"),
+              selected = "No preference", width = "100%", selectize = FALSE
+            )
           ),
+
+          uiOutput("cohort_counts"),
+          div(class = "cohort-actions", actionButton("test_boxplot", "Test")),
           br(),
           downloadButton("download_cohorts", "Download cohorts JSON")
         ),
+
 
         br(),
         tags$hr(),
