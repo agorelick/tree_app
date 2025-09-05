@@ -74,6 +74,17 @@ ui <- fluidPage(
       .tag-pill.inactive { opacity: 0.38; filter: grayscale(0.2); }
       .tag-legend { font-size:11px; color:#444; margin-top:6px; }
 
+      /* small close button inside cohort badges */
+      .badge { position: relative; padding-right: 18px; }
+      .badge-close {
+        position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+        display: inline-block; font-weight: 700; line-height: 1;
+        width: 14px; height: 14px; text-align: center; border-radius: 50%;
+        background: #d9534f; color: #fff; font-size: 10px; cursor: pointer;
+        box-shadow: 0 1px 1px rgba(0,0,0,.15);
+      }
+      .badge-close:hover { filter: brightness(0.95); }
+
       .filter-banner { margin: 8px 0 12px 0; padding: 8px 12px; background: #f4f7ff; border: 1px solid #cfe0ff; border-radius: 10px; font-size: 12px; color: #244; }
     ")),
     # (Your original <script> stays unchanged)
@@ -262,8 +273,51 @@ server <- function(input, output, session) {
       sprintf("Full cohort = %d | C1 = %d | C2 = %d", n_all, n1, n2)
     )
   })
-  output$cohort_badges1 <- renderUI({ labs <- cohort_labels()[[1]]; if (!length(labs)) return(NULL); lapply(labs, function(l) tags$span(class = "badge", title = l, l)) })
-  output$cohort_badges2 <- renderUI({ labs <- cohort_labels()[[2]]; if (!length(labs)) return(NULL); lapply(labs, function(l) tags$span(class = "badge", title = l, l)) })
+
+  output$cohort_badges1 <- renderUI({
+  labs <- cohort_labels()[[1]]
+  if (!length(labs)) return(NULL)
+  lapply(labs, function(l) {
+    # escape for inclusion in a JS string
+    l_js <- htmltools::htmlEscape(l, attribute = TRUE)
+    tags$span(
+      class = "badge",
+      title = l,
+      l,
+      tags$span(
+        class = "badge-close",
+        title = sprintf("Remove “%s” from Cohort 1", l),
+        onclick = sprintf(
+          "Shiny.setInputValue('cohort_remove', { idx: 1, label: '%s', nonce: Date.now() }, {priority: 'event'});",
+          l_js
+        ),
+        "\u00D7"  # ×
+      )
+    )
+  })
+})
+
+output$cohort_badges2 <- renderUI({
+  labs <- cohort_labels()[[2]]
+  if (!length(labs)) return(NULL)
+  lapply(labs, function(l) {
+    l_js <- htmltools::htmlEscape(l, attribute = TRUE)
+    tags$span(
+      class = "badge",
+      title = l,
+      l,
+      tags$span(
+        class = "badge-close",
+        title = sprintf("Remove “%s” from Cohort 2", l),
+        onclick = sprintf(
+          "Shiny.setInputValue('cohort_remove', { idx: 2, label: '%s', nonce: Date.now() }, {priority: 'event'});",
+          l_js
+        ),
+        "\u00D7"
+      )
+    )
+  })
+})
 
   # View toggles
   observeEvent(input$view_all, { view_mode("all") })
@@ -296,6 +350,18 @@ add_to_cohort <- function(idx, lab) {
 
   observeEvent(input$cohort_add1, { add_id <- input$cohort_add1$id; if (is.null(add_id) || !nzchar(add_id)) return(); lab <- id_to_label(add_id); if (!is.null(lab) && nzchar(lab)) add_to_cohort(1, lab) })
   observeEvent(input$cohort_add2, { add_id <- input$cohort_add2$id; if (is.null(add_id) || !nzchar(add_id)) return(); lab <- id_to_label(add_id); if (!is.null(lab) && nzchar(lab)) add_to_cohort(2, lab) })
+
+observeEvent(input$cohort_remove, {
+  info <- input$cohort_remove
+  req(info$idx, info$label)
+  x <- cohort_labels()
+  idx <- as.integer(info$idx)
+  if (idx >= 1 && idx <= length(x)) {
+    x[[idx]] <- setdiff(x[[idx]], info$label)
+    cohort_labels(x)
+  }
+}, ignoreInit = TRUE)
+
 
   # -------- Asset builder ----------
   rebuild_assets <- function(layout, lst, current_cohorts = NULL) {
