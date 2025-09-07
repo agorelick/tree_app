@@ -207,8 +207,18 @@ ui <- fluidPage(
             div(class = "cohort-badges", uiOutput("cohort_badges1")),
             div(class = "cohort-select",
                 selectInput(
-                  "cohort1_type", "Metastasis types",
-                  choices = c("All", "Peritoneum", "Liver"),
+                  "cohort1_type", "Metastasis type",
+                  choices = c("Peritoneum", "Liver", "Distant (any)", "Locoregional"),
+                  selected = NULL, width = "100%", selectize = FALSE
+                ),
+                selectInput(
+                  "cohort1_timing", "Metastasis timing",
+                  choices = c("No preference", "Synchronous", "Metachronous", "Meta after sync"),
+                  selected = NULL, width = "100%", selectize = FALSE
+                ),
+                selectInput(
+                  "cohort1_treatment", "Metastasis treatment",
+                  choices = c("No preference", "Untreated", "Systemic chemo", "Sys-chemo after untreated", "HIPEC"),
                   selected = NULL, width = "100%", selectize = FALSE
                 )
             )
@@ -221,25 +231,37 @@ ui <- fluidPage(
             div(class = "cohort-badges", uiOutput("cohort_badges2")),
             div(class = "cohort-select",
                 selectInput(
-                  "cohort2_type", "Metastasis types",
-                  choices = c("All", "Peritoneum", "Liver"),
+                  "cohort2_type", "Metastasis type",
+                  choices = c("Peritoneum", "Liver", "Distant (any)", "Locoregional"),
+                  selected = NULL, width = "100%", selectize = FALSE
+                ),
+                selectInput(
+                  "cohort2_timing", "Metastasis timing",
+                  choices = c("No preference", "Synchronous", "Metachronous", "Meta-after-sync"),
+                  selected = NULL, width = "100%", selectize = FALSE
+                ),
+                selectInput(
+                  "cohort2_treatment", "Metastasis treatment",
+                  choices = c("No preference", "Untreated", "Systemic chemo", "Sys-chemo after untreated", "HIPEC"),
                   selected = NULL, width = "100%", selectize = FALSE
                 )
             )
           ),
           uiOutput("cohort_counts"),
           div(class = "cohort-actions",
-            actionButton("test_boxplot", "Test")
-          ),
-          br(),
-          downloadButton("download_cohorts", "Download cohorts JSON")
+            actionButton("test_boxplot", "Calculate RDS/QDS")
+          )
         ),
 
         br(),
         tags$hr(),
         tags$h4("Plot"),
         plotOutput("cohort_plot", height = "260px"),
-        uiOutput("status")
+        uiOutput("status"),
+
+        br(),
+        downloadButton("download_cohorts", "Download cohorts JSON")
+
       ),
 
       # RIGHT: tree view (was mainPanel)
