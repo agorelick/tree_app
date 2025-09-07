@@ -150,71 +150,90 @@ ui <- fluidPage(
   ),
 
   # Root container with title + 2 scrollable columns
-div(class = "page-root",
-div(class = "title-panel",
-titlePanel("Phylo Tree Gallery (auto-loads ./data.rds)")
-),
-div(class = "app-wrap",
-div(class = "left-col",
-tags$p(class = "help-text",
-strong("Expected input: "), code("data.rds"),
-" should contain a ", strong("named list of distance matrices (class ", code("matrix"), ")"),
-". Each matrix will be converted to a tree with ", code("ape::nj()"), "."
-),
-fileInput("rds", "Upload .rds (named list of distance matrices)", accept = ".rds"),
-actionButton("reload_default", "Reload ./data.rds"),
-br(), br(),
+  div(class = "page-root",
+    div(class = "title-panel",
+      titlePanel("Phylo Tree Gallery (auto-loads ./data.rds)")
+    ),
+    div(class = "app-wrap",
+      # LEFT: control panel (was sidebarPanel)
+      div(class = "left-col",
+        tags$p(
+          class = "help-text",
+          strong("Expected input: "), code("data.rds"),
+          " should contain a ",
+          strong("named list of distance matrices (class ", code("matrix"), ")"),
+          ". Each matrix will be converted to a tree with ", code("ape::nj()"), "."
+        ),
+        fileInput("rds", "Upload .rds (named list of distance matrices)", accept = ".rds"),
+        actionButton("reload_default", "Reload ./data.rds"),
+        br(), br(),
 
+        # ---- UPDATED HELP + INPUT (TSV tags) ----
+        tags$p(class = "help-text",
+               strong("Optional tags TSV:"),
+               " table with columns ", code("Patient_ID"), ", ", code("met_treated"), ", and ", code("met_timing"),
+               ". Distinct values in ", code("met_treated"), " and ", code("met_timing"),
+               " become tags; patients get tags present in any of their metastases."
+        ),
+        fileInput("tag_csv", "Upload tags (TSV)", accept = c(".tsv", ".txt")),
 
-tags$p(class = "help-text",
-strong("Optional tags TSV:"),
-" columns: Patient_ID, met_treated, met_type. Patient_ID must match tree names."
-),
-fileInput("tag_tsv", "Upload tag table (TSV)", accept = c(".tsv", ".txt")),
-div(class = "tag-cloud-head",
-tags$h4("Tags"),
-actionLink("clear_tag", "Show all")
-),
-uiOutput("tag_cloud"),
-uiOutput("tag_filter_status"),
-tags$hr(),
-
+        div(class = "tag-cloud-head",
+            tags$h4("Tags"),
+            actionLink("clear_tag", "Show all")
+        ),
+        uiOutput("tag_cloud"),
+        uiOutput("tag_filter_status"),
+        tags$hr(),
 
         radioButtons("layout", "Tree layout",
                      choices = c("Unrooted", "Rooted"),
                      selected = "Unrooted", inline = TRUE),
 
+        div(class = "cohort-section",
+          tags$h4("Cohorts"),
+          div(class = "cohort-actions",
+            actionLink("view_all", label = "Full cohort"),
+            HTML("&nbsp;|&nbsp;"),
+            actionLink("view_c1", label = "Cohort 1"),
+            HTML("&nbsp;|&nbsp;"),
+            actionLink("view_c2", label = "Cohort 2"),
+          ),
 
-
-div(class = "cohort-section",
-tags$h4("Cohorts"),
-div(class = "cohort-actions",
-actionLink("view_all", label = "Full cohort"),
-HTML("&nbsp;|&nbsp;"),
-actionLink("view_c1", label = "Cohort 1"),
-HTML("&nbsp;|&nbsp;"),
-actionLink("view_c2", label = "Cohort 2")
-),
-div(class = "cohort-zone", id = "cohortDrop1",
-div(class="cohort-header",
-tags$h5(class="cohort-title","Cohort 1"),
-actionButton("clear_c1", "Clear", class="btn btn-xs")
-),
-div(class = "cohort-badges", uiOutput("cohort_badges1"))
-),
-div(class = "cohort-zone", id = "cohortDrop2",
-div(class="cohort-header",
-tags$h5(class="cohort-title","Cohort 2"),
-actionButton("clear_c2", "Clear", class="btn btn-xs")
-),
-div(class = "cohort-badges", uiOutput("cohort_badges2"))
-),
-uiOutput("cohort_counts"),
-div(class = "cohort-actions", actionButton("test_boxplot", "Test")),
-br(),
-downloadButton("download_cohorts", "Download cohorts JSON")
-),
-
+          div(class = "cohort-zone", id = "cohortDrop1",
+            div(class="cohort-header",
+              tags$h5(class="cohort-title","Cohort 1"),
+              actionButton("clear_c1", "Clear", class="btn btn-xs")
+            ),
+            div(class = "cohort-badges", uiOutput("cohort_badges1")),
+            div(class = "cohort-select",
+                selectInput(
+                  "cohort1_type", "Metastasis types",
+                  choices = c("All", "Peritoneum", "Liver"),
+                  selected = NULL, width = "100%", selectize = FALSE
+                )
+            )
+          ),
+          div(class = "cohort-zone", id = "cohortDrop2",
+            div(class="cohort-header",
+              tags$h5(class="cohort-title","Cohort 2"),
+              actionButton("clear_c2", "Clear", class="btn btn-xs")
+            ),
+            div(class = "cohort-badges", uiOutput("cohort_badges2")),
+            div(class = "cohort-select",
+                selectInput(
+                  "cohort2_type", "Metastasis types",
+                  choices = c("All", "Peritoneum", "Liver"),
+                  selected = NULL, width = "100%", selectize = FALSE
+                )
+            )
+          ),
+          uiOutput("cohort_counts"),
+          div(class = "cohort-actions",
+            actionButton("test_boxplot", "Test")
+          ),
+          br(),
+          downloadButton("download_cohorts", "Download cohorts JSON")
+        ),
 
         br(),
         tags$hr(),
@@ -531,58 +550,102 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = TRUE)
 
+  # ---------- UPDATED TAG TSV LOADER ----------
+  build_tag_matrix_from_tsv <- function(df) {
+    # Required columns
+    need <- c("Patient_ID", "met_treated", "met_timing")
+    if (!all(need %in% colnames(df))) {
+      stop(sprintf(
+        "Tags TSV must contain columns: %s. Found: %s",
+        paste(need, collapse = ", "),
+        paste(colnames(df), collapse = ", ")
+      ))
+    }
 
+    # Normalize & trim
+    df$Patient_ID  <- trimws(as.character(df$Patient_ID))
+    df$met_treated <- trimws(as.character(df$met_treated))
+    df$met_timing  <- trimws(as.character(df$met_timing))
 
+    # Unique tag vocabulary = distinct non-empty values from both columns
+    vals_treated <- unique(df$met_treated[nzchar(df$met_treated)])
+    vals_timing  <- unique(df$met_timing[nzchar(df$met_timing)])
+    tag_levels   <- sort(unique(c(vals_treated, vals_timing)))
 
-# --- Tag TSV loader ---
-observeEvent(input$tag_tsv, {
-req(input$tag_tsv$datapath)
-df <- try(utils::read.delim(input$tag_tsv$datapath, stringsAsFactors = FALSE), silent = TRUE)
-if (inherits(df, "try-error") || !all(c("Patient_ID","met_treated","met_type") %in% colnames(df))) {
-notes("Tag TSV must contain columns: Patient_ID, met_treated, met_type.")
-tags_mat(NULL); tag_colors(setNames(character(), character())); selected_tags(character())
-return(invisible())
-}
+    # Patient list
+    patients <- sort(unique(df$Patient_ID[nzchar(df$Patient_ID)]))
+    if (!length(tag_levels) || !length(patients)) {
+      return(matrix(0, nrow = 0, ncol = 0))
+    }
 
+    mat <- matrix(0, nrow = length(tag_levels), ncol = length(patients),
+                  dimnames = list(tag_levels, patients))
 
-# Collect distinct tag values
-tag_vals <- unique(c(df$met_treated, df$met_type))
-tag_vals <- tag_vals[!is.na(tag_vals) & nzchar(tag_vals)]
+    # For each patient, mark tags observed in either column
+    split(df, df$Patient_ID) |>
+      lapply(function(d) {
+        union(
+          unique(d$met_treated[nzchar(d$met_treated)]),
+          unique(d$met_timing[nzchar(d$met_timing)])
+        )
+      }) |>
+      (\(patient_tags) {
+        for (pid in names(patient_tags)) {
+          tset <- intersect(patient_tags[[pid]], rownames(mat))
+          if (length(tset) && pid %in% colnames(mat)) {
+            mat[tset, pid] <- 1
+          }
+        }
+        mat
+      })()
+  }
 
+  observeEvent(input$tag_csv, {
+    req(input$tag_csv$datapath)
+    df <- try(utils::read.delim(input$tag_csv$datapath, check.names = FALSE, stringsAsFactors = FALSE), silent = TRUE)
+    if (inherits(df, "try-error")) {
+      notes(paste0("Failed to read tags TSV: ", attr(df, "condition")$message))
+      tags_mat(NULL); tag_colors(setNames(character(), character())); selected_tags(character())
+      return(invisible())
+    }
 
-# Build matrix rows=tags, cols=Patient_ID
-pats <- unique(df$Patient_ID)
-mat <- matrix(0, nrow=length(tag_vals), ncol=length(pats), dimnames=list(tag_vals, pats))
-for (pid in pats) {
-sub <- df[df$Patient_ID==pid,]
-for (tg in unique(c(sub$met_treated, sub$met_type))) {
-if (!is.na(tg) && nzchar(tg)) mat[tg, pid] <- 1
-}
-}
+    # Build tag matrix from TSV columns
+    mat <- try(build_tag_matrix_from_tsv(df), silent = TRUE)
+    if (inherits(mat, "try-error")) {
+      notes(paste0("Failed to parse tags TSV: ", attr(mat, "condition")$message))
+      tags_mat(NULL); tag_colors(setNames(character(), character())); selected_tags(character())
+      return(invisible())
+    }
 
+    if (!nrow(mat) || !ncol(mat)) {
+      notes("Tags TSV produced an empty tag set or no patients; nothing to apply.")
+      tags_mat(NULL); tag_colors(setNames(character(), character())); selected_tags(character())
+      return(invisible())
+    }
 
-# Assign colors
-n <- nrow(mat)
-if (n) {
-hues <- seq(15, 375, length.out = n+1L)[1:n]
-cols <- grDevices::hcl(h=hues, c=80, l=55)
-names(cols) <- rownames(mat)
-tag_colors(cols)
-} else {
-tag_colors(setNames(character(), character()))
-}
+    # Colors per tag (unchanged)
+    tg_names <- rownames(mat); n <- length(tg_names)
+    if (n) {
+      hues <- seq(15, 375, length.out = n + 1L)[1:n]
+      cols <- grDevices::hcl(h = hues, c = 80, l = 55)
+      names(cols) <- tg_names
+      tag_colors(cols)
+    } else {
+      tag_colors(setNames(character(), character()))
+    }
 
+    tags_mat(mat)
+    selected_tags(character())  # reset selection
 
-tags_mat(mat)
-selected_tags(character())
-tree_labels <- vapply(items(), `[[`, "", "label")
-matched <- intersect(colnames(mat), tree_labels)
-notes(paste0("Loaded tag TSV with ", nrow(mat), " tags and ", ncol(mat), " patients. ",
-if (length(matched)) paste0("Matched ", length(matched), " tree(s).") else "No tree names matched."))
-}, ignoreInit = TRUE)
-
-
-
+    # Report overlap to user
+    tree_labels <- vapply(items(), `[[`, "", "label")
+    matched <- intersect(colnames(mat), tree_labels)
+    notes(paste0(
+      "Loaded tags TSV with ", nrow(mat), " distinct tag(s) across ", ncol(mat), " patient(s). ",
+      if (length(matched)) paste0("Matched ", length(matched), " tree name(s).") else "No tree names matched."
+    ))
+  }, ignoreInit = TRUE)
+  # ---------- END UPDATED TAG TSV LOADER ----------
 
   # Helper: tags for a given tree label
   tags_for_tree <- function(label) {
@@ -598,7 +661,7 @@ if (length(matched)) paste0("Matched ", length(matched), " tree(s).") else "No t
     mat  <- tags_mat()
     cols <- tag_colors()
     if (is.null(mat) || !nrow(mat)) {
-      return(tags$div(class = "note", "Upload a tag CSV to enable tag filtering."))
+      return(tags$div(class = "note", "Upload a tags TSV to enable tag filtering."))
     }
 
     tg_names <- rownames(mat)
