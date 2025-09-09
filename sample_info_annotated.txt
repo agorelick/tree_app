@@ -1,0 +1,372 @@
+Patient_ID	sample	met_type	pu	pl	data_type	base_dir	met_timing	met_treated	in_collapsed	sample_time_after_pt_surgery
+C149	LN2b	Locoregional	0.281	1.9	offtarget_lpWGS	offtarget_lpWGS/C149	synchronous	neoadj sys chemo	TRUE	0
+C149	PT1a	Primary	0.276	2.046	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT1b	Primary	0.45	2	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT1c	Primary	0.45	2	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT2a	Primary	0.486	2.061	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT2b	Primary	0.51	2	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT2c	Primary	0.7	2	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT2d	Primary	0.233	2.218	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT2e	Primary	0.7	2	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT2f	Primary	0.699	2.14	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT3a	Primary	0.36	2	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT3b	Primary	0.569	2.1	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT3c	Primary	0.379	1.9	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT3d	Primary	0.318	1.9	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT4a	Primary	0.654	2.089	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT4b	Primary	0.56	2	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT4c	Primary	0.856	2.129	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT4d	Primary	0.95	2.122	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	PT5	Primary	0.425	1.9	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+C149	Per1a	Peritoneum	0.436	1.9	offtarget_lpWGS	offtarget_lpWGS/C149	synchronous	neoadj sys chemo	TRUE	0
+C149	Per1b	Peritoneum	0.346	2.196	offtarget_lpWGS	offtarget_lpWGS/C149	synchronous	neoadj sys chemo	FALSE	0
+C149	Per2a	Peritoneum	0.3	2.05	offtarget_lpWGS	offtarget_lpWGS/C149	synchronous	neoadj sys chemo	TRUE	0
+C149	Per2b	Peritoneum	0.63	2.05	offtarget_lpWGS	offtarget_lpWGS/C149	synchronous	neoadj sys chemo	FALSE	0
+C149	Per3b	Peritoneum	0.246	1.9	offtarget_lpWGS	offtarget_lpWGS/C149	synchronous	neoadj sys chemo	TRUE	0
+C149	Per4a1	Peritoneum	0.409	1.9	offtarget_lpWGS	offtarget_lpWGS/C149	synchronous	neoadj sys chemo	TRUE	0
+C149	Per4b2	Peritoneum	0.452	1.9	offtarget_lpWGS	offtarget_lpWGS/C149	synchronous	neoadj sys chemo	FALSE	0
+C149	Per6a	Peritoneum	0.54	2	offtarget_lpWGS	offtarget_lpWGS/C149	synchronous	neoadj sys chemo	TRUE	0
+C149	N1	Normal	NA	2	offtarget_lpWGS	offtarget_lpWGS/C149	primary/normal	neoadj sys chemo	TRUE	0
+LM11	LN1b	Locoregional	0.1	2.27	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	TRUE	0
+LM11	Per1a	Peritoneum	0.537	2.138	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	TRUE	24
+LM11	Per1b	Peritoneum	0.489	2.198	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	FALSE	24
+LM11	Per1c	Peritoneum	0.521	2.136	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	FALSE	24
+LM11	Per1d	Peritoneum	0.426	2.437	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	FALSE	24
+LM11	Per1e	Peritoneum	0.546	2.345	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	FALSE	24
+LM11	Per1f	Peritoneum	0.56	2.066	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	FALSE	24
+LM11	Per2a	Peritoneum	0.525	2.26	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	TRUE	24
+LM11	Per2b	Peritoneum	0.483	2.414	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	FALSE	24
+LM11	Per2c	Peritoneum	0.33	2.243	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	FALSE	24
+LM11	Per3a	Peritoneum	0.207	2.472	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	TRUE	24
+LM11	Per3b	Peritoneum	0.398	2.163	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	FALSE	24
+LM11	Per3c	Peritoneum	0.336	2.5	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	FALSE	24
+LM11	PT1a	Primary	0.462	2.179	offtarget_lpWGS	offtarget_lpWGS/LM11	primary/normal	untreated	TRUE	0
+LM11	PT1b	Primary	0.549	2.428	offtarget_lpWGS	offtarget_lpWGS/LM11	primary/normal	untreated	TRUE	0
+LM11	PT2	Primary	0.396	2.484	offtarget_lpWGS	offtarget_lpWGS/LM11	primary/normal	untreated	TRUE	0
+LM11	Per4b	Peritoneum	0.22	2.33	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	TRUE	24
+LM11	Per4c	Peritoneum	0.35	2.37	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	FALSE	24
+LM11	Per4d	Peritoneum	0.4	2.3	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	FALSE	24
+LM11	Per4e	Peritoneum	0.14	2.3	offtarget_lpWGS	offtarget_lpWGS/LM11	metachronous	untreated	FALSE	24
+LM11	N1	Normal	NA	2	offtarget_lpWGS	offtarget_lpWGS/LM11	primary/normal	untreated	TRUE	0
+LM15	Liv1	Liver	0.732	2.97	WES	WES/LM15	metachronous	adj sys chemo	TRUE	9
+LM15	Liv2	Liver	0.608	2.857	WES	WES/LM15	metachronous	adj sys chemo	TRUE	9
+LM15	Liv3	Liver	0.78	2.665	WES	WES/LM15	metachronous	adj sys chemo	TRUE	9
+LM15	Liv4	Liver	0.775	2.652	WES	WES/LM15	metachronous	adj sys chemo	TRUE	18
+LM15	Per1	Peritoneum	0.11	2.77	WES	WES/LM15	metachronous	adj sys chemo	TRUE	23
+LM15	Per2	Peritoneum	0.16	2.88	WES	WES/LM15	metachronous	adj sys chemo	TRUE	23
+LM15	Per3	Peritoneum	0.339	2.452	WES	WES/LM15	metachronous	adj sys chemo	TRUE	23
+LM15	Per4	Peritoneum	0.431	2.869	WES	WES/LM15	metachronous	adj sys chemo	TRUE	23
+LM15	Per5	Peritoneum	0.539	2.539	WES	WES/LM15	metachronous	adj sys chemo	TRUE	23
+LM15	PT1a	Primary	0.524	2.37	WES	WES/LM15	primary/normal	untreated	TRUE	0
+LM15	PT1b	Primary	0.847	2.445	WES	WES/LM15	primary/normal	untreated	TRUE	0
+LM15	PT2a	Primary	0.939	2.443	WES	WES/LM15	primary/normal	untreated	TRUE	0
+LM15	PT2b	Primary	0.693	2.595	WES	WES/LM15	primary/normal	untreated	TRUE	0
+LM15	PT3a	Primary	0.931	2.295	WES	WES/LM15	primary/normal	untreated	TRUE	0
+LM15	PT3b	Primary	0.872	2.258	WES	WES/LM15	primary/normal	untreated	TRUE	0
+LM15	N1	Normal	NA	2	WES	WES/LM15	primary/normal	untreated	TRUE	0
+LM16	Liv2a	Liver	0.41	2.65	WES	WES/LM16	synchronous	untreated	TRUE	4
+LM16	Liv2b	Liver	0.542	2.752	WES	WES/LM16	synchronous	untreated	FALSE	4
+LM16	Liv1	Liver	0.32	2.54	WES	WES/LM16	synchronous	untreated	TRUE	0
+LM16	Liv3a	Liver	0.5	2.4	WES	WES/LM16	metachronous	untreated	TRUE	9
+LM16	Liv3b	Liver	0.695	2.761	WES	WES/LM16	metachronous	untreated	FALSE	9
+LM16	PT1	Primary	0.46	2.68	WES	WES/LM16	primary/normal	untreated	TRUE	0
+LM16	PT2	Primary	0.649	2.722	WES	WES/LM16	primary/normal	untreated	TRUE	0
+LM16	PT3	Primary	0.43	2.69	WES	WES/LM16	primary/normal	untreated	TRUE	0
+LM16	PT4	Primary	0.555	2.621	WES	WES/LM16	primary/normal	untreated	TRUE	0
+LM16	N1	Normal	NA	2	WES	WES/LM16	primary/normal	untreated	TRUE	9
+LM31	Per1	Peritoneum	0.16	2.3	WES	WES/LM31	synchronous	untreated	TRUE	0
+LM31	Per2	Peritoneum	0.372	1.998	WES	WES/LM31	metachronous	hipec	TRUE	12
+LM31	Per3a	Peritoneum	0.358	2.079	WES	WES/LM31	metachronous	hipec	TRUE	19
+LM31	Per3b	Peritoneum	0.36	2.092	WES	WES/LM31	metachronous	hipec	FALSE	19
+LM31	PT1	Primary	0.62	2.288	WES	WES/LM31	primary/normal	untreated	TRUE	0
+LM31	PT2	Primary	0.606	2.093	WES	WES/LM31	primary/normal	untreated	TRUE	0
+LM31	PT3	Primary	0.653	2.169	WES	WES/LM31	primary/normal	untreated	TRUE	0
+LM31	PT4	Primary	0.35	2.1	WES	WES/LM31	primary/normal	untreated	TRUE	0
+LM31	PT5	Primary	0.733	2.567	WES	WES/LM31	primary/normal	untreated	TRUE	0
+LM31	N1	Normal	NA	2	WES	WES/LM31	primary/normal	untreated	TRUE	-1
+LM34	Per4	Peritoneum	0.46	3.51	WES	WES/LM34	synchronous	untreated	TRUE	1
+LM34	Per5	Peritoneum	0.26	3.48	WES	WES/LM34	synchronous	untreated	TRUE	1
+LM34	Per7	Peritoneum	0.25	3.44	WES	WES/LM34	synchronous	untreated	TRUE	1
+LM34	Per1	Peritoneum	0.49	3.52	WES	WES/LM34	synchronous	untreated	TRUE	1
+LM34	Per2	Peritoneum	0.2	3.2	WES	WES/LM34	synchronous	untreated	TRUE	1
+LM34	Per6	Peritoneum	0.55	3.2	WES	WES/LM34	synchronous	untreated	TRUE	1
+LM34	Per3	Peritoneum	0.52	3.35	WES	WES/LM34	synchronous	untreated	TRUE	1
+LM34	PT1a	Primary	0.49	3.62	WES	WES/LM34	primary/normal	untreated	TRUE	1
+LM34	PT1b	Primary	0.46	3.62	WES	WES/LM34	primary/normal	untreated	TRUE	1
+LM34	PT2a	Primary	0.526	3.533	WES	WES/LM34	primary/normal	untreated	TRUE	1
+LM34	PT2b	Primary	0.454	3.457	WES	WES/LM34	primary/normal	untreated	TRUE	1
+LM34	PT2c	Primary	0.339	3.454	WES	WES/LM34	primary/normal	untreated	TRUE	1
+LM34	PT3	Primary	0.455	3.489	WES	WES/LM34	primary/normal	untreated	TRUE	1
+LM34	N1	Normal	NA	2	WES	WES/LM34	primary/normal	untreated	TRUE	1
+LM42	Per2	Peritoneum	0.479	2.016	WES	WES/LM42	metachronous	adj sys chemo	TRUE	12
+LM42	Per1	Peritoneum	0.633	1.98	WES	WES/LM42	metachronous	adj sys chemo	TRUE	12
+LM42	Per3	Peritoneum	0.45	1.75	WES	WES/LM42	metachronous	adj sys chemo	TRUE	12
+LM42	PT1a	Primary	0.803	1.984	WES	WES/LM42	primary/normal	untreated	TRUE	0
+LM42	PT1b	Primary	0.592	1.97	WES	WES/LM42	primary/normal	untreated	TRUE	0
+LM42	PT2a	Primary	0.485	1.956	WES	WES/LM42	primary/normal	untreated	TRUE	0
+LM42	PT2b	Primary	0.875	2.004	WES	WES/LM42	primary/normal	untreated	TRUE	0
+LM42	PT2c	Primary	0.577	2.024	WES	WES/LM42	primary/normal	untreated	TRUE	0
+LM42	PT2d	Primary	0.713	1.985	WES	WES/LM42	primary/normal	untreated	TRUE	0
+LM42	N1	Normal	NA	2	WES	WES/LM42	primary/normal	untreated	TRUE	0
+LM46	Per1	Peritoneum	0.562	3.464	WES	WES/LM46	synchronous	untreated	TRUE	0
+LM46	Per2	Peritoneum	0.685	2.928	WES	WES/LM46	synchronous	untreated	TRUE	0
+LM46	Per3	Peritoneum	0.305	2.917	WES	WES/LM46	synchronous	untreated	TRUE	0
+LM46	Per4	Peritoneum	0.441	3.051	WES	WES/LM46	synchronous	untreated	TRUE	0
+LM46	Per5	Peritoneum	0.395	3.458	WES	WES/LM46	synchronous	untreated	TRUE	0
+LM46	PT1a	Primary	0.672	3.221	WES	WES/LM46	primary/normal	untreated	TRUE	0
+LM46	PT1b	Primary	0.532	3.028	WES	WES/LM46	primary/normal	untreated	TRUE	0
+LM46	PT2	Primary	0.647	3.5	WES	WES/LM46	primary/normal	untreated	TRUE	0
+LM46	PT3	Primary	0.647	3.408	WES	WES/LM46	primary/normal	untreated	TRUE	0
+LM46	PT4	Primary	0.396	3.402	WES	WES/LM46	primary/normal	untreated	TRUE	0
+LM46	PT5	Primary	0.393	3.063	WES	WES/LM46	primary/normal	untreated	TRUE	0
+LM46	N1	Normal	NA	2	WES	WES/LM46	primary/normal	untreated	TRUE	0
+LM48	Per3	Peritoneum	0.484	2.1	WES	WES/LM48	metachronous	adj sys chemo	TRUE	13
+LM48	Per4	Peritoneum	0.802	1.994	WES	WES/LM48	metachronous	adj sys chemo	TRUE	13
+LM48	Per5	Peritoneum	0.445	1.926	WES	WES/LM48	metachronous	adj sys chemo	TRUE	13
+LM48	Per1	Peritoneum	0.867	1.948	WES	WES/LM48	metachronous	adj sys chemo	TRUE	13
+LM48	Per2	Peritoneum	0.901	1.986	WES	WES/LM48	metachronous	adj sys chemo	TRUE	13
+LM48	PT1	Primary	0.917	2.085	WES	WES/LM48	primary/normal	untreated	TRUE	0
+LM48	PT2	Primary	0.845	1.904	WES	WES/LM48	primary/normal	untreated	TRUE	0
+LM48	PT3	Primary	0.551	2.03	WES	WES/LM48	primary/normal	untreated	TRUE	0
+LM48	PT4	Primary	0.423	1.999	WES	WES/LM48	primary/normal	untreated	TRUE	0
+LM48	PT5	Primary	0.868	1.976	WES	WES/LM48	primary/normal	untreated	TRUE	0
+LM48	N1	Normal	NA	2	WES	WES/LM48	primary/normal	untreated	TRUE	NA
+LM5	Per1	Peritoneum	0.588	2.186	WES	WES/LM5	synchronous	untreated	TRUE	0
+LM5	Per2	Peritoneum	0.453	2.135	WES	WES/LM5	synchronous	untreated	TRUE	0
+LM5	PT1a	Primary	0.694	2.2	WES	WES/LM5	primary/normal	untreated	TRUE	0
+LM5	PT1b	Primary	0.726	2.203	WES	WES/LM5	primary/normal	untreated	TRUE	0
+LM5	PT2a	Primary	0.35	2.29	WES	WES/LM5	primary/normal	untreated	TRUE	0
+LM5	PT2b	Primary	0.498	2.202	WES	WES/LM5	primary/normal	untreated	TRUE	0
+LM5	PT2c	Primary	0.692	2.146	WES	WES/LM5	primary/normal	untreated	TRUE	0
+LM5	N1	Normal	NA	2	WES	WES/LM5	primary/normal	untreated	TRUE	0
+LM51	Per5	Peritoneum	0.744	1.726	WES	WES/LM51	synchronous	untreated	TRUE	0
+LM51	Per6	Peritoneum	0.795	1.726	WES	WES/LM51	synchronous	untreated	TRUE	0
+LM51	Per1	Peritoneum	0.398	1.79	WES	WES/LM51	synchronous	untreated	TRUE	0
+LM51	Per2	Peritoneum	0.28	1.81	WES	WES/LM51	synchronous	untreated	TRUE	0
+LM51	Per3	Peritoneum	0.447	1.708	WES	WES/LM51	synchronous	untreated	TRUE	0
+LM51	Per4	Peritoneum	0.672	1.707	WES	WES/LM51	synchronous	untreated	TRUE	0
+LM51	PT1	Primary	0.774	1.731	WES	WES/LM51	primary/normal	untreated	TRUE	0
+LM51	PT2	Primary	0.733	1.68	WES	WES/LM51	primary/normal	untreated	TRUE	0
+LM51	PT3	Primary	0.726	1.734	WES	WES/LM51	primary/normal	untreated	TRUE	0
+LM51	PT4	Primary	0.725	1.732	WES	WES/LM51	primary/normal	untreated	TRUE	0
+LM51	PT5	Primary	0.776	1.658	WES	WES/LM51	primary/normal	untreated	TRUE	0
+LM51	PT6	Primary	0.677	1.726	WES	WES/LM51	primary/normal	untreated	TRUE	0
+LM51	N1	Normal	NA	2	WES	WES/LM51	primary/normal	untreated	TRUE	0
+LM55	Per1	Peritoneum	0.85	3.269	WES	WES/LM55	metachronous	neoadj sys chemo	TRUE	10
+LM55	Per3	Peritoneum	0.62	3.33	WES	WES/LM55	metachronous	neoadj sys chemo	TRUE	21
+LM55	Per2	Peritoneum	0.68	3.29	WES	WES/LM55	metachronous	neoadj sys chemo	TRUE	21
+LM55	PT1	Primary	0.624	3.206	WES	WES/LM55	primary/normal	neoadj sys chemo	TRUE	0
+LM55	PT2	Primary	0.728	3.407	WES	WES/LM55	primary/normal	neoadj sys chemo	TRUE	0
+LM55	PT3	Primary	0.63	3.03	WES	WES/LM55	primary/normal	neoadj sys chemo	TRUE	0
+LM55	PT4	Primary	0.25	3.33	WES	WES/LM55	primary/normal	neoadj sys chemo	TRUE	0
+LM55	PT5a	Primary	0.574	2.9	WES	WES/LM55	primary/normal	neoadj sys chemo	TRUE	0
+LM55	PT5b	Primary	0.2	3.6	WES	WES/LM55	primary/normal	neoadj sys chemo	TRUE	0
+LM55	N1	Normal	NA	2	WES	WES/LM55	primary/normal	neoadj sys chemo	TRUE	0
+LM6	Ov1	Distant (other)	0.723	3.9	offtarget_lpWGS	offtarget_lpWGS/LM6	synchronous	untreated	TRUE	0
+LM6	Per1	Peritoneum	0.473	4.13	offtarget_lpWGS	offtarget_lpWGS/LM6	synchronous	untreated	TRUE	0
+LM6	Per10	Peritoneum	0.264	3.965	offtarget_lpWGS	offtarget_lpWGS/LM6	synchronous	untreated	TRUE	0
+LM6	Per3a	Peritoneum	0.699	4.046	offtarget_lpWGS	offtarget_lpWGS/LM6	synchronous	untreated	TRUE	0
+LM6	Per3c	Peritoneum	0.752	3.728	offtarget_lpWGS	offtarget_lpWGS/LM6	synchronous	untreated	FALSE	0
+LM6	Per4	Peritoneum	0.334	4.115	offtarget_lpWGS	offtarget_lpWGS/LM6	synchronous	untreated	TRUE	0
+LM6	Per5a	Peritoneum	0.699	3.875	offtarget_lpWGS	offtarget_lpWGS/LM6	synchronous	untreated	TRUE	0
+LM6	Per7a	Peritoneum	0.494	3.845	offtarget_lpWGS	offtarget_lpWGS/LM6	synchronous	untreated	TRUE	0
+LM6	Per7b	Peritoneum	0.652	3.807	offtarget_lpWGS	offtarget_lpWGS/LM6	synchronous	untreated	FALSE	0
+LM6	Per8	Peritoneum	0.203	4.024	offtarget_lpWGS	offtarget_lpWGS/LM6	synchronous	untreated	TRUE	0
+LM6	Per9a	Peritoneum	0.831	4.216	offtarget_lpWGS	offtarget_lpWGS/LM6	synchronous	untreated	TRUE	0
+LM6	Per9b	Peritoneum	0.175	4.387	offtarget_lpWGS	offtarget_lpWGS/LM6	synchronous	untreated	FALSE	0
+LM6	PT1a	Primary	0.544	3.658	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT1b	Primary	0.629	3.539	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT1c	Primary	0.859	3.535	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT1d	Primary	0.95	3.458	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT1e	Primary	0.796	3.888	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT2a	Primary	0.599	3.912	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT2b	Primary	0.41	4.238	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT2c	Primary	0.737	3.805	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT2d	Primary	0.44	4.033	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT2e	Primary	0.774	3.831	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT2f	Primary	0.218	3.952	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT2g	Primary	0.714	3.611	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT2h	Primary	0.451	3.537	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT3a	Primary	0.95	3.438	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT3b	Primary	0.554	3.455	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT3c	Primary	0.72	4.16	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	PT4	Primary	0.64	4.18	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM6	N1	Normal	NA	2	offtarget_lpWGS	offtarget_lpWGS/LM6	primary/normal	untreated	TRUE	0
+LM68	Per1	Peritoneum	0.444	2.027	WES	WES/LM68	metachronous	adj sys chemo	TRUE	6
+LM68	Per2	Peritoneum	0.448	2.008	WES	WES/LM68	metachronous	adj sys chemo	TRUE	6
+LM68	Per3	Peritoneum	0.64	2.021	WES	WES/LM68	metachronous	adj sys chemo	TRUE	6
+LM68	Per4	Peritoneum	0.585	2.02	WES	WES/LM68	metachronous	adj sys chemo	TRUE	6
+LM68	PT5	Primary	0.64	1.96	WES	WES/LM68	primary/normal	untreated	TRUE	0
+LM68	PT1	Primary	0.579	1.888	WES	WES/LM68	primary/normal	untreated	TRUE	0
+LM68	PT2	Primary	0.825	1.906	WES	WES/LM68	primary/normal	untreated	TRUE	0
+LM68	PT3	Primary	0.24	1.95	WES	WES/LM68	primary/normal	untreated	TRUE	0
+LM68	PT4	Primary	0.715	1.951	WES	WES/LM68	primary/normal	untreated	TRUE	0
+LM68	N1	Normal	NA	2	WES	WES/LM68	primary/normal	untreated	TRUE	0
+LM8	Per1	Peritoneum	0.4	3.125	WES	WES/LM8	synchronous	untreated	TRUE	-1
+LM8	Per2	Peritoneum	0.634	3.198	WES	WES/LM8	synchronous	untreated	TRUE	-1
+LM8	Per3	Peritoneum	0.391	3.198	WES	WES/LM8	synchronous	untreated	TRUE	-1
+LM8	Per4	Peritoneum	0.225	3.1	WES	WES/LM8	synchronous	untreated	TRUE	-1
+LM8	PT1a	Primary	0.714	3.103	WES	WES/LM8	primary/normal	untreated	TRUE	0
+LM8	PT1b	Primary	0.49	3.133	WES	WES/LM8	primary/normal	untreated	TRUE	0
+LM8	PT1c	Primary	0.525	3.325	WES	WES/LM8	primary/normal	untreated	TRUE	0
+LM8	PT2	Primary	0.446	3.277	WES	WES/LM8	primary/normal	untreated	TRUE	0
+LM8	PT3	Primary	0.502	3.153	WES	WES/LM8	primary/normal	untreated	TRUE	0
+LM8	N1	Normal	NA	2	WES	WES/LM8	primary/normal	untreated	TRUE	-1
+LM84	Per1	Peritoneum	0.853	2.867	WES	WES/LM84	synchronous	untreated	TRUE	0
+LM84	Per2	Peritoneum	0.275	2.6	WES	WES/LM84	synchronous	untreated	TRUE	0
+LM84	Per3	Peritoneum	0.498	2.653	WES	WES/LM84	synchronous	untreated	TRUE	0
+LM84	PT1a	Primary	0.733	2.824	WES	WES/LM84	primary/normal	untreated	TRUE	0
+LM84	PT1b	Primary	0.89	2.524	WES	WES/LM84	primary/normal	untreated	TRUE	0
+LM84	PT2a	Primary	0.857	2.666	WES	WES/LM84	primary/normal	untreated	TRUE	0
+LM84	PT2b	Primary	0.651	2.862	WES	WES/LM84	primary/normal	untreated	TRUE	0
+LM84	PT3	Primary	0.741	2.758	WES	WES/LM84	primary/normal	untreated	TRUE	0
+LM84	N1	Normal	NA	2	WES	WES/LM84	primary/normal	untreated	TRUE	0
+LM85	Liv2	Liver	0.607	1.95	WES	WES/LM85	synchronous	untreated	TRUE	2
+LM85	Liv3	Liver	0.76	1.946	WES	WES/LM85	synchronous	untreated	TRUE	2
+LM85	Liv1	Liver	0.7	1.957	WES	WES/LM85	synchronous	untreated	TRUE	2
+LM85	Per5	Peritoneum	0.578	1.98	WES	WES/LM85	metachronous	adj sys chemo	TRUE	10
+LM85	Per6	Peritoneum	0.765	1.983	WES	WES/LM85	metachronous	adj sys chemo	TRUE	10
+LM85	Per7	Peritoneum	0.835	1.965	WES	WES/LM85	metachronous	adj sys chemo	TRUE	10
+LM85	Per1	Peritoneum	0.342	1.961	WES	WES/LM85	metachronous	adj sys chemo	TRUE	10
+LM85	Per2	Peritoneum	0.532	1.977	WES	WES/LM85	metachronous	adj sys chemo	TRUE	10
+LM85	Per3	Peritoneum	0.476	1.978	WES	WES/LM85	metachronous	adj sys chemo	TRUE	10
+LM85	Per4	Peritoneum	0.591	1.976	WES	WES/LM85	metachronous	adj sys chemo	TRUE	10
+LM85	PT1	Primary	0.62	1.892	WES	WES/LM85	primary/normal	untreated	TRUE	0
+LM85	PT2	Primary	0.423	1.915	WES	WES/LM85	primary/normal	untreated	TRUE	0
+LM85	PT3	Primary	0.613	1.953	WES	WES/LM85	primary/normal	untreated	TRUE	0
+LM85	PT4	Primary	0.677	1.912	WES	WES/LM85	primary/normal	untreated	TRUE	0
+LM85	PT5	Primary	0.364	1.898	WES	WES/LM85	primary/normal	untreated	TRUE	0
+LM85	N1	Normal	NA	2	WES	WES/LM85	primary/normal	untreated	TRUE	0
+LM86	Per1	Peritoneum	0.15	3.13	WES	WES/LM86	synchronous	untreated	TRUE	0
+LM86	Per5	Peritoneum	0.51	2.95	WES	WES/LM86	metachronous	hipec	TRUE	12
+LM86	Per6	Peritoneum	0.5	3.02	WES	WES/LM86	metachronous	hipec	TRUE	12
+LM86	Per2	Peritoneum	0.28	3.26	WES	WES/LM86	synchronous	untreated	TRUE	0
+LM86	Per3	Peritoneum	0.33	3.17	WES	WES/LM86	synchronous	untreated	TRUE	0
+LM86	Per4	Peritoneum	0.55	3.24	WES	WES/LM86	synchronous	untreated	TRUE	0
+LM86	PT1	Primary	0.61	2.92	WES	WES/LM86	primary/normal	untreated	TRUE	0
+LM86	PT2	Primary	0.57	3.15	WES	WES/LM86	primary/normal	untreated	TRUE	0
+LM86	PT3a	Primary	0.27	3.21	WES	WES/LM86	primary/normal	untreated	TRUE	0
+LM86	PT3b	Primary	0.5	3.2	WES	WES/LM86	primary/normal	untreated	TRUE	0
+LM86	PT4	Primary	0.46	3.26	WES	WES/LM86	primary/normal	untreated	TRUE	0
+LM86	PT5	Primary	0.47	3.12	WES	WES/LM86	primary/normal	untreated	TRUE	0
+LM86	N1	Normal	NA	2	WES	WES/LM86	primary/normal	untreated	TRUE	0
+LM89	Per1	Peritoneum	0.227	3.619	WES	WES/LM89	metachronous	neoadj sys chemo + adj sys chemo	TRUE	9
+LM89	Per2	Peritoneum	0.23	3.3	WES	WES/LM89	metachronous	neoadj sys chemo + adj sys chemo	TRUE	9
+LM89	Per3	Peritoneum	0.585	2.996	WES	WES/LM89	metachronous	neoadj sys chemo + adj sys chemo	TRUE	9
+LM89	PT1	Primary	0.56	3.213	WES	WES/LM89	primary/normal	neoadj sys chemo	TRUE	0
+LM89	PT2	Primary	0.576	3.139	WES	WES/LM89	primary/normal	neoadj sys chemo	TRUE	0
+LM89	PT3	Primary	0.78	3.275	WES	WES/LM89	primary/normal	neoadj sys chemo	TRUE	0
+LM89	PT4	Primary	0.305	3.243	WES	WES/LM89	primary/normal	neoadj sys chemo	TRUE	0
+LM89	PT5	Primary	0.671	3.103	WES	WES/LM89	primary/normal	neoadj sys chemo	TRUE	0
+LM89	PT6	Primary	0.527	3.291	WES	WES/LM89	primary/normal	neoadj sys chemo	TRUE	0
+LM89	N1	Normal	NA	2	WES	WES/LM89	primary/normal	neoadj sys chemo	TRUE	0
+LM90	Liv1	Liver	0.709	2.9	WES	WES/LM90	synchronous	untreated	TRUE	0
+LM90	Per3	Peritoneum	0.306	3.273	WES	WES/LM90	synchronous	untreated	TRUE	0
+LM90	Per4	Peritoneum	0.548	3.324	WES	WES/LM90	synchronous	untreated	TRUE	0
+LM90	Per5	Peritoneum	0.316	3.253	WES	WES/LM90	synchronous	untreated	TRUE	0
+LM90	Per1	Peritoneum	0.303	3.143	WES	WES/LM90	synchronous	untreated	TRUE	0
+LM90	Per2	Peritoneum	0.393	3.301	WES	WES/LM90	synchronous	untreated	TRUE	0
+LM90	PT1	Primary	0.406	3.355	WES	WES/LM90	primary/normal	untreated	TRUE	0
+LM90	PT2	Primary	0.626	3.256	WES	WES/LM90	primary/normal	untreated	TRUE	0
+LM90	PT3	Primary	0.398	3.2	WES	WES/LM90	primary/normal	untreated	TRUE	0
+LM90	PT4	Primary	0.448	3.054	WES	WES/LM90	primary/normal	untreated	TRUE	0
+LM90	N1	Normal	NA	2	WES	WES/LM90	primary/normal	untreated	TRUE	0
+LM96	Per1	Peritoneum	0.41	2.76	WES	WES/LM96	synchronous	untreated	TRUE	0
+LM96	Per2	Peritoneum	0.31	3.07	WES	WES/LM96	synchronous	untreated	TRUE	2
+LM96	Per3	Peritoneum	0.35	2.75	WES	WES/LM96	synchronous	untreated	TRUE	2
+LM96	PT1	Primary	0.291	2.816	WES	WES/LM96	primary/normal	untreated	TRUE	0
+LM96	PT2	Primary	0.459	2.813	WES	WES/LM96	primary/normal	untreated	TRUE	0
+LM96	PT3	Primary	0.366	2.766	WES	WES/LM96	primary/normal	untreated	TRUE	0
+LM96	PT4	Primary	0.525	2.726	WES	WES/LM96	primary/normal	untreated	TRUE	0
+LM96	PT5	Primary	0.604	2.807	WES	WES/LM96	primary/normal	untreated	TRUE	0
+LM96	PT6	Primary	0.564	2.931	WES	WES/LM96	primary/normal	untreated	TRUE	0
+LM96	N1	Normal	NA	2	WES	WES/LM96	primary/normal	untreated	TRUE	0
+OW1	Liv1	Liver	0.37	2.28	WES	WES/OW1	synchronous	untreated	TRUE	1
+OW1	Liv2	Liver	0.37	2.3	WES	WES/OW1	metachronous	untreated	TRUE	13
+OW1	Liv3	Liver	0.2	2.2	WES	WES/OW1	metachronous	untreated	TRUE	13
+OW1	PT0a	Primary	0.32	1.97	WES	WES/OW1	primary/normal	untreated	TRUE	0
+OW1	PT0b	Primary	0.14	1.8	WES	WES/OW1	primary/normal	untreated	TRUE	0
+OW1	PT0c	Primary	0.15	1.85	WES	WES/OW1	primary/normal	untreated	TRUE	0
+OW1	PT0d	Primary	0.62	2.4	WES	WES/OW1	primary/normal	untreated	TRUE	0
+OW1	N1	Normal	NA	2	WES	WES/OW1	primary/normal	untreated	TRUE	NA
+OW10	Liv2	Liver	0.124	2.152	WES	WES/OW10	metachronous	neoadj sys chemo	TRUE	15
+OW10	PT0a	Primary	0.122	2.286	WES	WES/OW10	primary/normal	neoadj sys chemo	TRUE	0
+OW10	PT0b	Primary	0.21	2.104	WES	WES/OW10	primary/normal	neoadj sys chemo	TRUE	0
+OW10	PT0c	Primary	0.149	2.277	WES	WES/OW10	primary/normal	neoadj sys chemo	TRUE	0
+OW10	Per1	Peritoneum	0.283	2.005	WES	WES/OW10	synchronous	neoadj sys chemo	TRUE	0
+OW10	Per2	Peritoneum	0.498	1.911	WES	WES/OW10	synchronous	neoadj sys chemo	TRUE	0
+OW10	Per3	Peritoneum	0.123	1.944	WES	WES/OW10	synchronous	neoadj sys chemo	TRUE	0
+OW10	Per4	Peritoneum	0.229	2.01	WES	WES/OW10	metachronous	neoadj sys chemo	TRUE	15
+OW10	Per5	Peritoneum	0.327	2.191	WES	WES/OW10	metachronous	neoadj sys chemo	TRUE	15
+OW10	N1	Normal	NA	2	WES	WES/OW10	primary/normal	neoadj sys chemo	TRUE	NA
+OW2	Liv1	Liver	0.611	2.22	WES	WES/OW2	metachronous	untreated	TRUE	6
+OW2	Liv2	Liver	0.659	2.238	WES	WES/OW2	metachronous	untreated	TRUE	6
+OW2	Liv3	Liver	0.564	2.285	WES	WES/OW2	metachronous	untreated	TRUE	6
+OW2	PT0a	Primary	0.683	2.267	WES	WES/OW2	primary/normal	untreated	TRUE	0
+OW2	PT0b	Primary	0.667	2.288	WES	WES/OW2	primary/normal	untreated	TRUE	0
+OW2	PT0c	Primary	0.606	2.213	WES	WES/OW2	primary/normal	untreated	TRUE	0
+OW2	N1	Normal	NA	2	WES	WES/OW2	primary/normal	untreated	TRUE	NA
+OW3	Liv1	Liver	0.61	3.47	WES	WES/OW3	synchronous	untreated	TRUE	0
+OW3	Liv2	Liver	0.45	3.85	WES	WES/OW3	synchronous	untreated	TRUE	0
+OW3	Liv3	Liver	0.56	3.62	WES	WES/OW3	synchronous	untreated	TRUE	0
+OW3	PT0a	Primary	0.2	4	WES	WES/OW3	primary/normal	untreated	TRUE	0
+OW3	PT0b	Primary	0.4	4	WES	WES/OW3	primary/normal	untreated	TRUE	0
+OW3	PT0c	Primary	0.18	3.75	WES	WES/OW3	primary/normal	untreated	TRUE	0
+OW3	PT0d	Primary	0.27	4	WES	WES/OW3	primary/normal	untreated	TRUE	0
+OW3	PT0e	Primary	0.22	3.93	WES	WES/OW3	primary/normal	untreated	TRUE	0
+OW3	PT0f	Primary	0.33	3.59	WES	WES/OW3	primary/normal	untreated	TRUE	0
+OW3	N1	Normal	NA	2	WES	WES/OW3	primary/normal	untreated	TRUE	NA
+OW4	Liv1	Liver	0.1	2.1	WES	WES/OW4	metachronous	untreated	TRUE	18
+OW4	Liv2	Liver	0.841	2.209	WES	WES/OW4	metachronous	untreated	TRUE	18
+OW4	Liv3	Liver	0.35	2.05	WES	WES/OW4	metachronous	untreated	TRUE	18
+OW4	Liv4	Liver	0.522	2.206	WES	WES/OW4	metachronous	untreated	TRUE	51
+OW4	PT0a	Primary	0.53	2.152	WES	WES/OW4	primary/normal	untreated	TRUE	0
+OW4	PT0b	Primary	0.25	2.14	WES	WES/OW4	primary/normal	untreated	TRUE	0
+OW4	PT0c	Primary	0.675	2.112	WES	WES/OW4	primary/normal	untreated	TRUE	0
+OW4	PT0d	Primary	0.391	2.151	WES	WES/OW4	primary/normal	untreated	TRUE	0
+OW4	N1	Normal	NA	2	WES	WES/OW4	primary/normal	untreated	TRUE	NA
+OW5	Liv1	Liver	0.515	2.564	WES	WES/OW5	synchronous	neoadj sys chemo	TRUE	0
+OW5	PT0a	Primary	0.275	2.6	WES	WES/OW5	primary/normal	neoadj sys chemo	TRUE	0
+OW5	PT0b	Primary	0.6	2.67	WES	WES/OW5	primary/normal	neoadj sys chemo	TRUE	0
+OW5	PT0c	Primary	0.623	2.509	WES	WES/OW5	primary/normal	neoadj sys chemo	TRUE	0
+OW5	PT0d	Primary	0.597	2.478	WES	WES/OW5	primary/normal	neoadj sys chemo	TRUE	0
+OW5	PT0e	Primary	0.437	2.819	WES	WES/OW5	primary/normal	neoadj sys chemo	TRUE	0
+OW5	PT0f	Primary	0.674	2.73	WES	WES/OW5	primary/normal	neoadj sys chemo	TRUE	0
+OW5	PT0g	Primary	0.507	2.516	WES	WES/OW5	primary/normal	neoadj sys chemo	TRUE	0
+OW5	N1	Normal	NA	2	WES	WES/OW5	primary/normal	neoadj sys chemo	TRUE	NA
+OW6	Liv1	Liver	0.445	2.042	WES	WES/OW6	synchronous	neoadj sys chemo + adj sys chemo	TRUE	4
+OW6	Liv2	Liver	0.504	2.073	WES	WES/OW6	synchronous	neoadj sys chemo + adj sys chemo	TRUE	4
+OW6	Liv3	Liver	0.554	2.079	WES	WES/OW6	synchronous	neoadj sys chemo + adj sys chemo	TRUE	4
+OW6	PT0a	Primary	0.344	2.083	WES	WES/OW6	primary/normal	neoadj sys chemo	TRUE	0
+OW6	PT0b	Primary	0.25	2	WES	WES/OW6	primary/normal	neoadj sys chemo	TRUE	0
+OW6	PT0c	Primary	0.95	1.963	WES	WES/OW6	primary/normal	neoadj sys chemo	TRUE	0
+OW6	PT0d	Primary	0.947	2.051	WES	WES/OW6	primary/normal	neoadj sys chemo	TRUE	0
+OW6	N1	Normal	NA	2	WES	WES/OW6	primary/normal	neoadj sys chemo	TRUE	NA
+OW7	Liv1	Liver	0.515	1.96	WES	WES/OW7	metachronous	untreated	TRUE	13
+OW7	Liv2	Liver	0.78	1.9	WES	WES/OW7	metachronous	untreated	TRUE	55
+OW7	PT0a	Primary	0.831	1.993	WES	WES/OW7	primary/normal	untreated	TRUE	0
+OW7	PT0b	Primary	0.762	2.007	WES	WES/OW7	primary/normal	untreated	TRUE	0
+OW7	PT0c	Primary	0.774	1.986	WES	WES/OW7	primary/normal	untreated	TRUE	0
+OW7	PT0d	Primary	0.761	1.975	WES	WES/OW7	primary/normal	untreated	TRUE	0
+OW7	N1	Normal	NA	2	WES	WES/OW7	primary/normal	untreated	TRUE	NA
+OW9	Liv1	Liver	0.768	2.062	WES	WES/OW9	synchronous	untreated	TRUE	1
+OW9	Liv2	Liver	0.471	2.105	WES	WES/OW9	metachronous	untreated	TRUE	18
+OW9	Liv3	Liver	0.79	2.056	WES	WES/OW9	metachronous	untreated	TRUE	41
+OW9	PT0a	Primary	0.496	2.145	WES	WES/OW9	primary/normal	untreated	TRUE	0
+OW9	PT0b	Primary	0.454	2.23	WES	WES/OW9	primary/normal	untreated	TRUE	0
+OW9	PT0c	Primary	0.609	2.082	WES	WES/OW9	primary/normal	untreated	TRUE	0
+OW9	PT0d	Primary	0.802	1.936	WES	WES/OW9	primary/normal	untreated	TRUE	0
+OW9	PT0e	Primary	0.607	2.076	WES	WES/OW9	primary/normal	untreated	TRUE	0
+OW9	PT0f	Primary	0.502	2.135	WES	WES/OW9	primary/normal	untreated	TRUE	0
+OW9	N1	Normal	NA	2	WES	WES/OW9	primary/normal	untreated	TRUE	NA
+LM56	Per1	Peritoneum	0.645	2.852	WES	WES/LM56	synchronous	untreated	TRUE	0
+LM56	Per5	Peritoneum	0.73	2.55	WES	WES/LM56	metachronous	hipec	TRUE	27
+LM56	Per2	Peritoneum	0.496	2.366	WES	WES/LM56	metachronous	hipec	TRUE	27
+LM56	Per3	Peritoneum	0.405	2.419	WES	WES/LM56	metachronous	hipec	TRUE	27
+LM56	Per4	Peritoneum	0.613	2.644	WES	WES/LM56	metachronous	hipec	TRUE	27
+LM56	PTA1a	Primary	0.59	2.21	WES	WES/LM56	primary/normal	untreated	TRUE	0
+LM56	PTA1b	Primary	0.81	2.17	WES	WES/LM56	primary/normal	untreated	TRUE	0
+LM56	PTA2a	Primary	0.4	2.73	WES	WES/LM56	primary/normal	untreated	TRUE	0
+LM56	PTA2b	Primary	0.53	2.45	WES	WES/LM56	primary/normal	untreated	TRUE	0
+LM56	PTB1	Primary	0.53	2.78	WES	WES/LM56	primary/normal	untreated	TRUE	0
+LM56	N1	Normal	NA	2	WES	WES/LM56	primary/normal	untreated	TRUE	NA

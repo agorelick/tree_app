@@ -3,69 +3,98 @@
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # for shiny app, create named-list of distance matrices
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-library(phangorn)
 
-load_tree <- function(this_patient, info, B=1e3, min_seg_length=5e6) {
-    message(this_patient)
-    sinfo <- info[patient==this_patient,]
-    data_type <- unique(sinfo$data_type)
-    base_dir <- unique(sinfo$base_dir)
-    groups <- sinfo[,c('sample','group'),with=F]
-    if(data_type=='wes') {
-        rds_file <- file.path(base_dir,paste0(this_patient,'_combo_njtree_public.rds'))
-        tree <- readRDS(rds_file)
-    } else {
-        seg_file <- file.path(base_dir,paste0('copy_number_segs.txt'))       
-        segs <- fread(seg_file)
-        set.seed(42)
-        tcn <- data.table::dcast(sample ~ segment, value.var='tcn', data=segs[seg_length >= min_seg_length,])
-        tcn <- d2m(tcn)
-        dm0 <- dist(tcn, method='manhattan')
-        tree0 <- nj(dm0)
-        
-        # hacky way to add bootstrap vals for offtarget cases for now        
-        resample <- function(i, tcn) {
-            selected_cols <- sample(1:ncol(tcn), replace=T)
-            tcn <- tcn[,selected_cols]
-            dm <- dist(tcn, method='manhattan')
-            tree <- nj(dm)
-            tree
-        }
-        bstrees <- lapply(1:B, resample, tcn)
-        class(bstrees) <- 'multiPhylo'
-        tree <- plotBS(tree0,bstrees,type="phylogram",p=0)
-        normal_sample <- grep('^N',tree$tip.label,value=T)
-        tree <- phytools::reroot(tree, which(tree$tip.label==normal_sample))
-    }
-    
-    tree
-}
+library(data.table)
+library(ape)
+library(rds)
+library(stringr)
+library(ggplot2)
+library(ggbeeswarm)
+library(ggrepel)
+library(ggpubr)
 
-data_list <- lapply(patients, load_tree, info)
-names(data_list) <- patients
-saveRDS(data_list, file='data_analysis/data.rds')
+rm(list=ls())
 
-cohort1 <- sample(patients, 10, replace=F)
-cohort2 <- sample(patients, 15, replace=F)
-cohort3 <- sample(patients, 7, replace=F)
-cohort4 <- sample(patients, 8, replace=F)
-cohorts <- list(cohort1, cohort2, cohort3, cohort4)#, c(), c(), c())
-names(cohorts) <- c('Random Cohort 1','Random Cohort 2','Random Cohort 3','Random Cohort 4')#,'Empty Cohort 1','Empty Cohort 2','Empty Cohort 3')
-saveRDS(cohorts, file='data_analysis/cohorts.rds')
-
-
+setwd('~/HMS Dropbox/Naxerova_Lab/Lisa/Peritoneal Revision')
+source('WES/func_wes.R')
+val_sample_info <- fread('data_analysis/validation_cohort/sample_info_annotated.csv')
+setnames(val_sample_info,'patient','Patient_ID')
+setnames(val_sample_info,'public_sample_name','Real_Sample_ID')
+val_sample_info <- val_sample_info[data_type=='WES']
+val_sample_info$Real_Sample_ID <- gsub('PTX','PT0',val_sample_info$Real_Sample_ID)
+val_patients <- unique(val_sample_info$Patient_ID)
 
 ## sample type color scheme
 group_cols <- c("#000000", "#008C45", "#EB5B2B", "#FAB31D", "#4C86C6", "#4C86C6", "#4C86C6")
 names(group_cols) <- c('Normal', 'Primary', 'Locoregional', 'Peritoneum', 'Lung', 'Liver', 'Distant (other)')
 
-p <- ggtree(tree, linewidth=0.5) + theme_tree2()
-#if(!is.null(xbreaks)) p <- p + scale_x_continuous(breaks=xbreaks,limits=range(xbreaks))
-p <- p %<+% groups
-p <- p + geom_tiplab(aes(color=group), hjust=-0.2, size=3) 
-p <- p + geom_nodelab(color='blue', size=2.5, hjust=-0.1)
-p <- p + scale_color_manual(values=group_cols,name='Sample type') + labs(title=this_patient)
-p <- p + guides(fill='none') + theme(legend.position='none')#legend.position)
-if(!is.na(xbuffer)) p <- p + xlim(0, max(p$data$x+xbuffer))
-p 
+
+load_tree <- function(this_patient, sample_info, min_seg_length=5e6, max_informative_tcn=6) {
+    message(this_patient)
+    sinfo <- sample_info[Patient_ID==this_patient,]
+    normal_sample <- grep('^N',sinfo$Real_Sample_ID,value=T)
+    data_type <- unique(sinfo$data_type)
+    base_dir <- unique(sinfo$base_dir)
+    #groups <- sinfo[,c('public_sample_name','group'),with=F]
+    #setnames(groups,'public_sample_name','sample')
+    dm <- tryCatch({
+        if(data_type=='WES') {
+            maf <- fread(file.path(base_dir,'public_data',paste0(this_patient,'_filtered_norm_passed_multisample_ccf_oncokb_cleaned.txt')))
+            segs <- fread(file.path(base_dir,'public_data',paste0(this_patient,'_copynumber_segments.tsv')))
+            fits <- fread(file.path(base_dir,'public_data',paste0(this_patient,'_purity_ploidy_fits.tsv')))
+            
+            mat1 <- data.table::dcast(tm ~ Tumor_Sample_Barcode, value.var='ccf', data=maf[!is.na(ccf) | Tumor_Sample_Barcode==normal_sample])
+            mat1 <- t(d2m(mat1))
+            mat1[normal_sample,] <- 0
+            
+            fits <- fits[!is.na(pu) & pu >= 0.1,]
+            truncalWGD <- ifelse(all(fits$pl >= 3),T,F)
+            if(truncalWGD) {
+                message('Truncal WGD event detected')
+                segs[sample==normal_sample,tcn:=2*tcn]
+            }
+            segs <- segs[seg_length >= min_seg_length,]
+            segs[tcn >= max_informative_tcn, tcn:=max_informative_tcn]
+            mat2 <- data.table::dcast(segment ~ sample, value.var='tcn', data=segs)
+            mat2 <- t(d2m(mat2))
+            
+            mat1 <- mat1[order(rownames(mat1)),]
+            mat2 <- mat2[rownames(mat1),]
+            mat <- cbind(mat1, mat2)
+            dm <- as.matrix(dist(mat,method='manhattan'))
+        } else {
+            seg_file <- file.path(base_dir,'processed_data/copy_number_segs.txt')       
+            segs <- fread(seg_file)
+            tcn <- data.table::dcast(sample ~ segment, value.var='tcn', data=segs[seg_length >= min_seg_length,])
+            tcn <- d2m(tcn)
+            dm <- as.matrix(dist(tcn, method='manhattan'))
+        }
+        dm
+    },error=function(e) {
+        NULL
+    })
+    rownames(dm) <- gsub('PTX','PT0',rownames(dm))
+    colnames(dm) <- gsub('PTX','PT0',colnames(dm))
+    dm 
+}
+
+read_distance_matrix <- function (file, return.as.matrix = T) {
+    distance_matrix <- fread(file)
+    rows <- distance_matrix[[1]]
+    distance_matrix <- distance_matrix[, (2:ncol(distance_matrix)), with = F]
+    m <- as.matrix(distance_matrix)
+    rownames(m) <- rows
+    if (return.as.matrix == F) {
+        as.dist(m, diag = T)
+    }
+    else {
+        m
+    }
+}
+
+dm_list <- lapply(val_patients, load_tree, val_sample_info)
+names(dm_list) <- val_patients
+saveRDS(dm_list, file='~/lab_repos/tree_app/data.rds')
+
+
 
