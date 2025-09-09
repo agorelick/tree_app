@@ -1,11 +1,17 @@
-# app.R (Cohort tip-subset by met_type)
-# Modified to subset each tree's distance matrix by sample met_type when Cohort 1/2 is selected,
-# then rebuild NJ trees from the subset matrices.
+# app.R — Cohort view: gray-out cards below thresholds; add joint (met_type, met_treated, met_timing) filtering
+# Rules in cohort view:
+#  keep a sample if met_type %in% c("Normal","Primary") OR
+#                    (met_type ∈ selected_met_set AND met_treated == sel_treated AND met_timing == sel_timing)
+#  Gray-out a tree card if (total kept < 4) OR (selected-group count < 2).
+#  “Distant (any)” = all met_types except Locoregional/Peritoneum (Normal/Primary are handled by the OR rule).
+#
+# Input requirements:
+#  - data.rds: named list of symmetric numeric matrices (or 'dist'); row/col names are tip labels
+#  - tags TSV: columns sample, met_type, met_treated, met_timing  (plus optional Patient_ID/met_treated/met_timing for tag cloud)
 
 library(shiny)
 library(jsonlite)
 library(ggplot2)
-library(rds)
 library(ggpubr)
 library(phytools)
 
@@ -25,7 +31,8 @@ ui <- fluidPage(
       .help-text { color:#555; }
       .note { margin-top: 10px; font-size: 12px; color:#666; }
       .gallery { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; width: 100%; }
-      .card { position: relative; font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,'Noto Sans','Apple Color Emoji','Segoe UI Emoji'; }
+      .card { position: relative; font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,'Noto Sans','Apple Color Emoji','Segoe UI Emoji'; transition: opacity .15s ease, filter .15s ease; }
+      .card.disabled { opacity: 0.48; filter: grayscale(100%); }
       .filename { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; color:#333; }
       .thumb { position: relative; display: inline-block; cursor: pointer; width: 100%; }
       .thumbnail { width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background:#fff; border:1px solid #d0d0d0; border-radius:10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
@@ -107,8 +114,7 @@ ui <- fluidPage(
         tags$p(
           class = "help-text",
           strong("Expected input: "), code("data.rds"),
-          " should contain a ",
-          strong("named list of distance matrices (class ", code("matrix"), ")"),
+          " should contain a ", strong("named list of distance matrices (class ", code("matrix"), ")"),
           ". Each matrix will be converted to a tree with ", code("ape::nj()"), "."
         ),
         fileInput("rds", "Upload .rds (named list of distance matrices)", accept = ".rds"),
@@ -117,10 +123,9 @@ ui <- fluidPage(
 
         tags$p(class = "help-text",
                strong("Optional tags TSV:"),
-               " include columns ", code("sample"), " and ", code("met_type"),
-               " to enable cohort tip subsetting. ",
-               "You may also include ", code("Patient_ID"), ", ", code("met_treated"), ", ", code("met_timing"),
-               " to drive the tag cloud."
+               " include columns ", code("sample"), ", ", code("met_type"), ", ", code("met_treated"), ", ", code("met_timing"),
+               " to enable cohort tip subsetting; optionally ", code("Patient_ID"), ", ", code("met_treated"), ", ", code("met_timing"),
+               " for the tag cloud."
         ),
         fileInput("tag_csv", "Upload tags (TSV)", accept = c(".tsv", ".txt")),
 
@@ -153,21 +158,21 @@ ui <- fluidPage(
             ),
             div(class = "cohort-badges", uiOutput("cohort_badges1")),
             div(class = "cohort-select",
-                selectInput(
-                  "cohort1_type", "Metastasis type",
-                  choices = c("Peritoneum", "Liver", "Distant (any)", "Locoregional"),
-                  selected = NULL, width = "100%", selectize = FALSE
-                ),
-                selectInput(
-                  "cohort1_timing", "Metastasis timing",
-                  choices = c("No preference", "Synchronous", "Metachronous", "Meta after sync"),
-                  selected = NULL, width = "100%", selectize = FALSE
-                ),
-                selectInput(
-                  "cohort1_treatment", "Metastasis treatment",
-                  choices = c("No preference", "Untreated", "Systemic chemo", "Sys-chemo after untreated", "HIPEC"),
-                  selected = NULL, width = "100%", selectize = FALSE
-                )
+              selectInput(
+                "cohort1_type", "Metastasis type",
+                choices = c("Peritoneum", "Liver", "Distant (any)", "Locoregional"),
+                selected = NULL, width = "100%", selectize = FALSE
+              ),
+              selectInput(
+                "cohort1_timing", "Metastasis timing",
+                choices = c("No preference", "Synchronous", "Metachronous", "Meta after sync"),
+                selected = "No preference", width = "100%", selectize = FALSE
+              ),
+              selectInput(
+                "cohort1_treatment", "Metastasis treatment",
+                choices = c("No preference", "Untreated", "Systemic chemo", "Sys-chemo after untreated", "HIPEC"),
+                selected = "No preference", width = "100%", selectize = FALSE
+              )
             )
           ),
           div(class = "cohort-zone", id = "cohortDrop2",
@@ -177,21 +182,21 @@ ui <- fluidPage(
             ),
             div(class = "cohort-badges", uiOutput("cohort_badges2")),
             div(class = "cohort-select",
-                selectInput(
-                  "cohort2_type", "Metastasis type",
-                  choices = c("Peritoneum", "Liver", "Distant (any)", "Locoregional"),
-                  selected = NULL, width = "100%", selectize = FALSE
-                ),
-                selectInput(
-                  "cohort2_timing", "Metastasis timing",
-                  choices = c("No preference", "Synchronous", "Metachronous", "Meta-after-sync"),
-                  selected = NULL, width = "100%", selectize = FALSE
-                ),
-                selectInput(
-                  "cohort2_treatment", "Metastasis treatment",
-                  choices = c("No preference", "Untreated", "Systemic chemo", "Sys-chemo after untreated", "HIPEC"),
-                  selected = NULL, width = "100%", selectize = FALSE
-                )
+              selectInput(
+                "cohort2_type", "Metastasis type",
+                choices = c("Peritoneum", "Liver", "Distant (any)", "Locoregional"),
+                selected = NULL, width = "100%", selectize = FALSE
+              ),
+              selectInput(
+                "cohort2_timing", "Metastasis timing",
+                choices = c("No preference", "Synchronous", "Metachronous", "Meta-after-sync"),
+                selected = "No preference", width = "100%", selectize = FALSE
+              ),
+              selectInput(
+                "cohort2_treatment", "Metastasis treatment",
+                choices = c("No preference", "Untreated", "Systemic chemo", "Sys-chemo after untreated", "HIPEC"),
+                selected = "No preference", width = "100%", selectize = FALSE
+              )
             )
           ),
           uiOutput("cohort_counts"),
@@ -200,8 +205,7 @@ ui <- fluidPage(
           )
         ),
 
-        br(),
-        tags$hr(),
+        br(), tags$hr(),
         tags$h4("Plot"),
         plotOutput("cohort_plot", height = "260px"),
         uiOutput("status"),
@@ -244,26 +248,43 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
+  save_placeholder_plot <- function(file, message = "Insufficient tips", device = c("png","pdf"),
+                                    width = 520, height = 520) {
+    device <- match.arg(device)
+    if (device == "png") { png(file, width = width, height = height, res = 96, bg = "white"); on.exit(dev.off(), add = TRUE) }
+    else { pdf(file, width = width/96, height = height/96, onefile = FALSE, paper = "special"); on.exit(dev.off(), add = TRUE) }
+    op <- par(no.readonly = TRUE); on.exit(par(op), add = TRUE)
+    par(mar = c(0,0,0,0))
+    plot.new(); rect(0,0,1,1,col="#ffffff",border=NA)
+    text(0.5, 0.6, "No tree preview", cex = 1.2)
+    text(0.5, 0.45, message, cex = 0.95)
+    invisible(TRUE)
+  }
+
   # --- Reactive state ---
   dist_list  <- reactiveVal(NULL)      # named list of distance matrices (original)
-  raw_list   <- reactiveVal(NULL)      # last list of phylo objects used to render (for plotting, stats)
+  raw_list   <- reactiveVal(NULL)      # last list of phylo objects used to render
   items      <- reactiveVal(list())
   notes      <- reactiveVal(NULL)
 
-  # Tag data (patient-level tag cloud) - optional
+  # Tag cloud (optional, patient-level)
   tags_mat       <- reactiveVal(NULL)
   tag_colors     <- reactiveVal(setNames(character(), character()))
   selected_tags  <- reactiveVal(character())
 
-  # Sample-level met_type mapping for cohort subsetting
-  sample_met_map <- reactiveVal(setNames(character(), character()))
+  # Sample-level attributes for subsetting
+  sample_attrs <- reactiveVal(list(
+    type    = setNames(character(), character()),
+    treated = setNames(character(), character()),
+    timing  = setNames(character(), character())
+  ))
 
   # Two cohorts
   empty_cohorts <- list(`Cohort 1` = character(), `Cohort 2` = character())
   cohort_labels <- reactiveVal(empty_cohorts)
 
-  view_mode     <- reactiveVal("all")               # 'all','c1','c2'
-  layout_mode   <- reactiveVal("Unrooted")          # reactive instead of global
+  view_mode     <- reactiveVal("all")
+  layout_mode   <- reactiveVal("Unrooted")
 
   # ---- Cohort counters/badges ----
   output$cohort_counts <- renderUI({
@@ -368,71 +389,21 @@ server <- function(input, output, session) {
     NULL
   }
 
-  # Convert named list of (dist or symmetric matrix) -> list of phylo
-  convert_list_mats_to_phylo <- function(obj) {
-    nms <- names(obj); if (is.null(nms)) nms <- paste0("item_", seq_along(obj))
-    phy <- list(); out_names <- character(0)
-    for (i in seq_along(obj)) {
-      nm <- nms[[i]]; el <- obj[[i]]
-      d <- as_dist_safe(el); if (is.null(d)) next
-      tr <- try(ape::nj(d), silent = TRUE)
-      tr <- try(phytools::reroot(tr, grep('^N', tr$tip.label)), silent = TRUE)
-      if (inherits(tr, "try-error") || !inherits(tr, "phylo")) next
-      phy[[length(phy)+1L]] <- tr
-      out_names <- c(out_names, nm)
-    }
-    if (length(phy)) names(phy) <- out_names
-    phy
-  }
-
-  # Subset matrices by allowed met_type tips, then convert
-  subset_and_convert_by_met <- function(obj, allowed_types, met_map) {
-    nms <- names(obj); if (is.null(nms)) nms <- paste0("item_", seq_along(obj))
-    out <- list(); out_names <- character(0)
-    for (i in seq_along(obj)) {
-      nm <- nms[[i]]; m <- obj[[i]]
-      dmat <- if (inherits(m, "dist")) as.matrix(m) else as.matrix(m)
-      rn <- rownames(dmat)
-      if (is.null(rn)) {
-        next
-      }
-      keep <- rn[rn %in% names(met_map) & met_map[rn] %in% allowed_types]
-      if (length(keep) >= 3) {
-        sub <- dmat[keep, keep, drop = FALSE]
-        d <- as_dist_safe(sub); if (is.null(d)) next
-        tr <- try(ape::nj(d), silent = TRUE)
-        tr <- try(phytools::reroot(tr, grep('^N', tr$tip.label)), silent = TRUE)
-        if (inherits(tr, "try-error") || !inherits(tr, "phylo")) next
-        out[[length(out)+1L]] <- tr
-        out_names <- c(out_names, nm)
-      } else {
-        # If fewer than 3 tips match, skip rendering this tree in subset mode
-        next
-      }
-    }
-    if (length(out)) names(out) <- out_names
-    out
-  }
-
   load_from_path <- function(path, source_label = NULL) {
     obj <- try(readRDS(path), silent = TRUE)
     if (inherits(obj, "try-error")) {
       items(list()); cohort_labels(empty_cohorts); view_mode("all"); dist_list(NULL); raw_list(NULL)
       notes(paste0("Failed to read RDS (", if (!is.null(source_label)) source_label else path, "): ", attr(obj, "condition")$message))
-      return(invisible(FALSE))
-    }
-    if (!is.list(obj)) {
+    } else if (!is.list(obj)) {
       items(list()); cohort_labels(empty_cohorts); view_mode("all"); dist_list(NULL); raw_list(NULL)
       notes("The RDS must contain a named list of distance matrices (class 'matrix' or 'dist').")
-      return(invisible(FALSE))
+    } else {
+      if (is.null(names(obj))) names(obj) <- paste0("item_", seq_along(obj))
+      dist_list(obj)
+      cohort_labels(empty_cohorts)
+      notes(paste0("Loaded ", length(obj), " matrices", if (!is.null(source_label)) paste0(" from ", source_label) else "", "."))
+      view_mode("all")
     }
-    if (is.null(names(obj))) names(obj) <- paste0("item_", seq_along(obj))
-
-    # Keep original matrices; rebuilt later depending on view
-    dist_list(obj)
-    cohort_labels(empty_cohorts)
-    notes(paste0("Loaded ", length(obj), " matrices", if (!is.null(source_label)) paste0(" from ", source_label) else "", "."))
-    view_mode("all")
     invisible(TRUE)
   }
 
@@ -443,21 +414,15 @@ server <- function(input, output, session) {
   }
 
   observeEvent(input$reload_default, {
-    if (file.exists("data.rds")) {
-      load_from_path("data.rds", source_label = "./data.rds")
-    } else {
-      items(list()); cohort_labels(empty_cohorts); view_mode("all"); dist_list(NULL); raw_list(NULL)
-      notes("No ./data.rds found in the current working directory.")
-    }
+    if (file.exists("data.rds")) load_from_path("data.rds", source_label = "./data.rds")
+    else { items(list()); cohort_labels(empty_cohorts); view_mode("all"); dist_list(NULL); raw_list(NULL); notes("No ./data.rds found in the current working directory.") }
   })
 
   observeEvent(input$rds, { req(input$rds$datapath); load_from_path(input$rds$datapath, source_label = "uploaded file") }, ignoreInit = TRUE)
 
-  # Layout toggle
   observeEvent(input$layout, { layout_mode(input$layout) }, ignoreInit = TRUE)
 
-  # ---------- TAG TSV LOADER (patient tags + sample met_type) ----------
-  # Patient-level tag matrix (optional, for tag cloud)
+  # ---------- TAG TSV LOADER (patient tags + sample attributes) ----------
   build_tag_matrix_from_tsv <- function(df) {
     need_any <- c("Patient_ID","met_treated","met_timing")
     if (!all(need_any %in% colnames(df))) {
@@ -470,42 +435,48 @@ server <- function(input, output, session) {
     vals_timing  <- unique(df$met_timing[nzchar(df$met_timing)])
     tag_levels   <- sort(unique(c(vals_treated, vals_timing)))
     patients <- sort(unique(df$Patient_ID[nzchar(df$Patient_ID)]))
-    if (!length(tag_levels) || !length(patients)) {
-      return(matrix(0, nrow = 0, ncol = 0))
-    }
+    if (!length(tag_levels) || !length(patients)) return(matrix(0, nrow = 0, ncol = 0))
     mat <- matrix(0, nrow = length(tag_levels), ncol = length(patients),
                   dimnames = list(tag_levels, patients))
-    split(df, df$Patient_ID) |>
-      lapply(function(d) {
-        union(
-          unique(d$met_treated[nzchar(d$met_treated)]),
-          unique(d$met_timing[nzchar(d$met_timing)])
-        )
-      }) |>
-      (\(patient_tags) {
-        for (pid in names(patient_tags)) {
-          tset <- intersect(patient_tags[[pid]], rownames(mat))
-          if (length(tset) && pid %in% colnames(mat)) mat[tset, pid] <- 1
-        }
-        mat
-      })()
+    spl <- split(df, df$Patient_ID)
+    for (pid in names(spl)) {
+      tset <- union(unique(spl[[pid]]$met_treated[nzchar(spl[[pid]]$met_treated)]),
+                    unique(spl[[pid]]$met_timing[nzchar(spl[[pid]]$met_timing)]))
+      tset <- intersect(tset, rownames(mat))
+      if (length(tset) && pid %in% colnames(mat)) mat[tset, pid] <- 1
+    }
+    mat
   }
 
-  # Sample-level met_type
-  build_sample_met_from_tsv <- function(df) {
-    need <- c("sample","met_type")
-    if (!all(need %in% colnames(df))) return(setNames(character(), character()))
-    s <- trimws(as.character(df$sample))
-    mt <- trimws(as.character(df$met_type))
-    keep <- nzchar(s) & nzchar(mt)
-    s <- s[keep]; mt <- mt[keep]
-    # collapse duplicates by last occurrence
-    if (length(s)) {
-      idx <- !duplicated(s, fromLast = TRUE)
-      setNames(mt[which(idx)], s[which(idx)])
-    } else {
-      setNames(character(), character())
+  build_sample_attrs_from_tsv <- function(df) {
+    need <- c("sample","met_type","met_treated","met_timing")
+    if (!all(need %in% colnames(df))) {
+      return(list(
+        type    = setNames(character(), character()),
+        treated = setNames(character(), character()),
+        timing  = setNames(character(), character())
+      ))
     }
+    s  <- trimws(as.character(df$sample))
+    mt <- trimws(as.character(df$met_type))
+    tr <- trimws(as.character(df$met_treated))
+    tm <- trimws(as.character(df$met_timing))
+    keep <- nzchar(s)
+    s <- s[keep]; mt <- mt[keep]; tr <- tr[keep]; tm <- tm[keep]
+    # keep the last occurrence per sample
+    if (!length(s)) {
+      return(list(
+        type    = setNames(character(), character()),
+        treated = setNames(character(), character()),
+        timing  = setNames(character(), character())
+      ))
+    }
+    idx <- !duplicated(s, fromLast = TRUE)
+    list(
+      type    = setNames(mt[which(idx)], s[which(idx)]),
+      treated = setNames(tr[which(idx)], s[which(idx)]),
+      timing  = setNames(tm[which(idx)], s[which(idx)])
+    )
   }
 
   observeEvent(input$tag_csv, {
@@ -514,11 +485,13 @@ server <- function(input, output, session) {
     if (inherits(df, "try-error")) {
       notes(paste0("Failed to read tags TSV: ", attr(df, "condition")$message))
       tags_mat(NULL); tag_colors(setNames(character(), character())); selected_tags(character())
-      sample_met_map(setNames(character(), character()))
+      sample_attrs(list(type=setNames(character(), character()),
+                        treated=setNames(character(), character()),
+                        timing=setNames(character(), character())))
       return(invisible())
     }
 
-    # Patient-level tag cloud (optional)
+    # Patient tag cloud (optional)
     mat <- try(build_tag_matrix_from_tsv(df), silent = TRUE)
     if (inherits(mat, "try-error") || !nrow(mat) || !ncol(mat)) {
       tags_mat(NULL); tag_colors(setNames(character(), character())); selected_tags(character())
@@ -529,25 +502,15 @@ server <- function(input, output, session) {
         cols <- grDevices::hcl(h = hues, c = 80, l = 55)
         names(cols) <- tg_names
         tag_colors(cols)
-      } else {
-        tag_colors(setNames(character(), character()))
-      }
+      } else tag_colors(setNames(character(), character()))
       tags_mat(mat); selected_tags(character())
     }
 
-    # Sample-level met_type mapping (required for cohort tip subsetting)
-    sm <- build_sample_met_from_tsv(df)
-    sample_met_map(sm)
+    # Sample-level attributes for cohort subsetting
+    sa <- build_sample_attrs_from_tsv(df)
+    sample_attrs(sa)
 
-    # Status
-    msg <- sprintf("Loaded tags TSV. sample/met_type pairs: %d.", length(sm))
-    if (!is.null(mat) && nrow(mat) && ncol(mat)) {
-      tree_labels <- vapply(items(), `[[`, "", "label")
-      matched <- intersect(colnames(mat), tree_labels)
-      msg <- paste0(msg, " Tag cloud available with ", nrow(mat), " distinct tag(s) across ", ncol(mat), " patient(s).")
-      if (length(matched)) msg <- paste0(msg, " Matched ", length(matched), " tree name(s).")
-    }
-    notes(msg)
+    notes(sprintf("Loaded tags TSV. samples: %d.", length(sa$type)))
   }, ignoreInit = TRUE)
   # ---------- END TSV LOADER ----------
 
@@ -630,42 +593,133 @@ server <- function(input, output, session) {
     )
   })
 
-  # -------- Central re-render pipeline --------
-  # Build the list of phylo objects to render, based on view (all vs c1/c2) and TSV sample met_type
-  build_current_phy_list <- reactive({
+  # --------- Build per-tree specs (phylo or placeholder + gray flag) ----------
+  build_current_specs <- reactive({
     obj <- dist_list()
     if (is.null(obj) || !length(obj)) return(list())
-    vm <- view_mode()
-    sm <- sample_met_map()
-    layout <- layout_mode()  # ensure reactive dep
 
-    if (identical(vm, "all") || !length(sm)) {
-      # Full tips (either no TSV, or viewing 'all')
-      convert_list_mats_to_phylo(obj)
-    } else {
-      idx <- switch(vm, c1 = 1L, c2 = 2L, 0L)
-      sel_type <- if (idx == 1L) input$cohort1_type else if (idx == 2L) input$cohort2_type else NULL
-      allowed <- unique(c("Normal", "Primary", sel_type %||% character()))
-      subset_and_convert_by_met(obj, allowed, sm)
+    vm <- view_mode()
+    sa <- sample_attrs()
+    # bind to layout as dependency so plots rebuild on change
+    layout <- layout_mode()
+
+    # Helper: selection for current cohort view
+    get_selection <- function(idx) {
+      sel_type    <- if (idx == 1L) input$cohort1_type    else input$cohort2_type
+      sel_timing  <- if (idx == 1L) input$cohort1_timing  else input$cohort2_timing
+      sel_treated <- if (idx == 1L) input$cohort1_treatment else input$cohort2_treatment
+
+      # normalize "No preference" -> NULL
+      sel_timing  <- if (is.null(sel_timing)  || sel_timing  == "No preference") NULL else sel_timing
+      sel_treated <- if (is.null(sel_treated) || sel_treated == "No preference") NULL else sel_treated
+
+      # derive selected metastasis set
+      uniq_types <- unique(unname(sa$type))
+      uniq_types <- uniq_types[nzchar(uniq_types)]
+      if (!is.null(sel_type) && nzchar(sel_type) && sel_type == "Distant (any)") {
+        sel_met_set <- setdiff(uniq_types, c("Locoregional","Peritoneum","Normal","Primary"))
+      } else if (!is.null(sel_type) && nzchar(sel_type)) {
+        sel_met_set <- sel_type
+      } else {
+        sel_met_set <- character(0)
+      }
+      list(sel_met_set = sel_met_set, sel_timing = sel_timing, sel_treated = sel_treated)
     }
+
+    # If not in cohort or no TSV -> render all tips (no gray)
+    if (identical(vm, "all") || !length(sa$type)) {
+      specs <- list()
+      for (nm in names(obj)) {
+        m <- obj[[nm]]
+        d <- as_dist_safe(m); if (is.null(d)) next
+        tr <- try(ape::nj(d), silent = TRUE)
+        tr <- try(phytools::reroot(tr, grep('^N', tr$tip.label)), silent = TRUE)
+        if (inherits(tr, "try-error") || !inherits(tr, "phylo")) {
+          specs[[nm]] <- list(label = nm, phylo = NULL, disabled = FALSE, tooltip = "Failed to build tree", kept_n = NA_integer_, selected_n = NA_integer_)
+        } else {
+          specs[[nm]] <- list(label = nm, phylo = tr, disabled = FALSE, tooltip = NULL, kept_n = length(tr$tip.label), selected_n = NA_integer_)
+        }
+      }
+      return(specs)
+    }
+
+    idx <- switch(vm, c1 = 1L, c2 = 2L, 0L)
+    choice <- get_selection(idx)
+    sel_met_set <- choice$sel_met_set
+    sel_timing  <- choice$sel_timing
+    sel_treated <- choice$sel_treated
+    have_selected_group <- length(sel_met_set) > 0
+
+    specs <- list()
+    for (nm in names(obj)) {
+      m <- obj[[nm]]
+      dmat <- if (inherits(m, "dist")) as.matrix(m) else as.matrix(m)
+      rn <- rownames(dmat)
+      if (is.null(rn)) next
+
+      # sample attributes
+      typ <- sa$type[rn]; trt <- sa$treated[rn]; tim <- sa$timing[rn]
+
+      keep_np  <- !is.na(typ) & typ %in% c("Normal","Primary")
+      keep_sel <- rep(FALSE, length(rn))
+      if (have_selected_group) {
+        match_met <- !is.na(typ) & typ %in% sel_met_set
+        match_trt <- if (is.null(sel_treated)) rep(TRUE, length(rn)) else (!is.na(trt) & trt == sel_treated)
+        match_tim <- if (is.null(sel_timing))  rep(TRUE, length(rn)) else (!is.na(tim) & tim == sel_timing)
+        keep_sel  <- match_met & match_trt & match_tim
+      }
+      keep_mask <- keep_np | keep_sel
+      keep <- rn[keep_mask]
+
+      selected_n <- sum(keep_sel, na.rm = TRUE)
+      kept_n     <- length(keep)
+
+      # Build phylo if >= 3 kept tips; otherwise placeholder
+      phy <- NULL; tooltip <- NULL
+      if (kept_n >= 3) {
+        sub <- dmat[keep, keep, drop = FALSE]
+        d <- as_dist_safe(sub)
+        if (!is.null(d)) {
+          phy <- try(ape::nj(d), silent = TRUE)
+          phy <- try(phytools::reroot(phy, grep('^N', phy$tip.label)), silent = TRUE)
+          if (inherits(phy, "try-error") || !inherits(phy, "phylo")) {
+            phy <- NULL; tooltip <- "Failed to build tree on subset"
+          }
+        } else {
+          tooltip <- "Subset matrix invalid"
+        }
+      } else {
+        tooltip <- sprintf("Too few tips in subset (n=%d)", kept_n)
+      }
+
+      # Gray-out rule: kept < 4 OR (selected group present AND selected_n < 2)
+      disabled <- (kept_n < 4) || (have_selected_group && selected_n < 2)
+      if (disabled && is.null(tooltip)) {
+        if (kept_n < 4) tooltip <- sprintf("Gray: total kept < 4 (n=%d)", kept_n)
+        else            tooltip <- sprintf("Gray: < 2 selected-group tips (n=%d)", selected_n)
+      }
+
+      specs[[nm]] <- list(label = nm, phylo = phy, disabled = disabled, tooltip = tooltip,
+                          kept_n = kept_n, selected_n = selected_n)
+    }
+    specs
   })
 
-  # Call rebuild_assets whenever relevant inputs change
-  rebuild_assets <- function(layout, lst, current_cohorts = NULL) {
+  # Build images + item metadata from specs
+  rebuild_assets <- function(layout, specs, current_cohorts = NULL) {
     old <- list.files(trees_dir, full.names = TRUE)
     if (length(old)) unlink(old, recursive = TRUE, force = TRUE)
-    if (is.null(lst) || !length(lst)) {
-      items(list()); notes("No valid trees to render.")
+    if (is.null(specs) || !length(specs)) {
+      items(list()); raw_list(list()); notes("No valid trees to display.")
       session$sendCustomMessage("setupDropZone", NULL)
       return(invisible(FALSE))
     }
 
-    nms <- names(lst); if (is.null(nms)) nms <- paste0("item_", seq_along(lst))
-    out <- list(); idx <- 0L
     ptype <- if (identical(layout, "Rooted")) "phylogram" else "unrooted"
+    out <- list(); built <- list(); idx <- 0L
 
-    for (i in seq_along(lst)) {
-      nm <- nms[[i]]; el <- lst[[i]]; if (!inherits(el, "phylo")) next
+    for (nm in names(specs)) {
+      sp <- specs[[nm]]
       idx <- idx + 1L
       stamp <- as.integer(Sys.time())
       base <- paste0(sanitize_name(nm), "_", idx, "_", stamp)
@@ -674,26 +728,37 @@ server <- function(input, output, session) {
       large_png <- file.path(trees_dir, paste0(base, "_large.png"))
       pdf_file  <- file.path(trees_dir, paste0(base, ".pdf"))
 
-      n_tips <- if (!is.null(el$tip.label)) length(el$tip.label) else 30L
-      cex_thumb <- label_cex(n_tips, scale_min = 0.25, scale_max = 0.9,  ref = 32)
-      cex_large <- label_cex(n_tips, scale_min = 0.45, scale_max = 1.2, ref = 42)
-      cex_pdf   <- label_cex(n_tips, scale_min = 0.55, scale_max = 1.3, ref = 48)
-
-      save_tree_plot(el, thumb_png, type = ptype, device = "png", width = 190, height = 190, cex = cex_thumb)
-      save_tree_plot(el, large_png, type = ptype, device = "png", width = 520, height = 520, cex = cex_large)
-      save_tree_plot(el, pdf_file,  type = ptype, device = "pdf", width = 800, height = 800, cex = cex_pdf)
+      if (!is.null(sp$phylo) && inherits(sp$phylo, "phylo")) {
+        n_tips <- if (!is.null(sp$phylo$tip.label)) length(sp$phylo$tip.label) else 30L
+        cex_thumb <- label_cex(n_tips, scale_min = 0.25, scale_max = 0.9,  ref = 32)
+        cex_large <- label_cex(n_tips, scale_min = 0.45, scale_max = 1.2, ref = 42)
+        cex_pdf   <- label_cex(n_tips, scale_min = 0.55, scale_max = 1.3, ref = 48)
+        save_tree_plot(sp$phylo, thumb_png, type = ptype, device = "png", width = 190, height = 190, cex = cex_thumb)
+        save_tree_plot(sp$phylo, large_png, type = ptype, device = "png", width = 520, height = 520, cex = cex_large)
+        save_tree_plot(sp$phylo, pdf_file,  type = ptype, device = "pdf", width = 800, height = 800, cex = cex_pdf)
+        built[[nm]] <- sp$phylo
+      } else {
+        msg <- sp$tooltip %||% "Insufficient tips"
+        save_placeholder_plot(thumb_png, message = msg, device = "png", width = 190, height = 190)
+        save_placeholder_plot(large_png, message = msg, device = "png", width = 520, height = 520)
+        save_placeholder_plot(pdf_file,   message = msg, device = "pdf", width = 800, height = 800)
+      }
 
       out[[length(out) + 1L]] <- list(
         id    = base, label = nm,
         thumb_url = sprintf("/%s/%s", prefix, basename(thumb_png)),
         large_url = sprintf("/%s/%s", prefix, basename(large_png)),
         pdf_url   = sprintf("/%s/%s", prefix, basename(pdf_file)),
-        download_name = paste0(sanitize_name(nm), ".pdf")
+        download_name = paste0(sanitize_name(nm), ".pdf"),
+        disabled = isTRUE(sp$disabled),
+        tooltip  = sp$tooltip %||% ""
       )
     }
 
     items(out)
+    raw_list(built)
 
+    # Keep cohort labels that are still present among items
     if (!is.null(current_cohorts)) {
       valid_labs <- vapply(out, `[[`, "", "label")
       trimmed <- list(
@@ -703,23 +768,22 @@ server <- function(input, output, session) {
       cohort_labels(trimmed)
     }
 
-    notes(paste0("Layout: ", layout, ". Generated ", length(out), " tree", if (length(out) == 1) "" else "s", "."))
+    n_disabled <- sum(vapply(out, function(x) isTRUE(x$disabled), logical(1)))
+    notes(paste0("Layout: ", layout, ". Generated ", length(out), " item(s). Grayed-out: ", n_disabled, "."))
     session$sendCustomMessage("setupDropZone", NULL)
     invisible(TRUE)
   }
 
   observe({
-    lst <- build_current_phy_list()
-    raw_list(lst)
-    rebuild_assets(layout_mode(), lst, current_cohorts = cohort_labels())
+    specs <- build_current_specs()
+    rebuild_assets(layout_mode(), specs, current_cohorts = cohort_labels())
   })
 
-  # ---- Gallery render (cohort view + AND tag filter) ----
+  # ---- Gallery (cohort + AND tag filter) ----
   output$gallery <- renderUI({
     its_all <- items()
     shiny::validate(shiny::need(length(its_all) > 0, "No trees to display yet. Load ./data.rds or upload a .rds file (named list of distance matrices)."))
 
-    # Cohort filtering first: only show cards for the chosen cohort
     show <- its_all
     vm <- view_mode()
     if (vm != "all") {
@@ -735,7 +799,6 @@ server <- function(input, output, session) {
       }
     }
 
-    # AND tag filtering (patient-level)
     sel <- selected_tags()
     if (length(sel)) {
       show <- Filter(function(x) {
@@ -761,7 +824,8 @@ server <- function(input, output, session) {
         )
       }
       tags$div(
-        class = "card", draggable = "true", `data-id` = it$id, `data-label` = lbl,
+        class = paste("card", if (isTRUE(it$disabled)) "disabled" else ""),
+        draggable = "true", `data-id` = it$id, `data-label` = lbl, title = it$tooltip %||% "",
         tags$div(class = "filename", lbl),
         tags$a(
           href = it$pdf_url, download = it$download_name, class = "thumb",
@@ -829,4 +893,5 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
 
