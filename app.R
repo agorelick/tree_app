@@ -1,6 +1,6 @@
-# app.R — per-tree tags now computed by subsetting tag TSV on Patient_ID == tree label,
-# then using that specific tree’s samples to derive met_type/met_timing/met_treated tags.
-# Tag cloud counts use the same logic. Color palette template retained.
+# app.R — cohort banner counts; prettier tag cloud with gray selected; plot mirrors cohort filters
+# Per-tree tags are computed by subsetting tag TSV on Patient_ID == tree label, then
+# restricting to that tree’s samples. Collapsed mode, cohort logic, and palette preserved.
 
 library(shiny)
 library(jsonlite)
@@ -14,36 +14,31 @@ if (!requireNamespace("ape", quietly = TRUE)) {
 
 # ================================
 # EDITABLE TAG COLOR PALETTE (TEMPLATE)
-# Define colors for all tag values used in the app.
-# Feel free to change these hex values.
-# Any tag missing here will be assigned a fallback color automatically.
 # ================================
 TAG_COLORS <- c(
     # Metastasis type tags
-    "Peritoneum"               = "#7B61FF",
-    "Liver"                    = "#2BB673",
-    "Locoregional"             = "#FF8C42",
-    "Distant (any)"            = "#E83E8C",
+    "Peritoneum"                = "#7B61FF",
+    "Liver"                     = "#2BB673",
+    "Locoregional"              = "#FF8C42",
+    "Distant (any)"             = "#E83E8C",
     
     # Metastasis timing tags
-    "Synchronous"              = "#17A2B8",
-    "Metachronous"             = "#6F42C1",
-    "Meta after sync"          = "#20C997",   # we normalize any variants to this label
+    "Synchronous"               = "#17A2B8",
+    "Metachronous"              = "#6F42C1",
+    "Meta after sync"           = "#20C997",
     
     # Metastasis treatment tags
-    "Untreated"                = "#6C757D",
-    "Systemic chemo"           = "#007BFF",
-    "Sys-chemo after untreated"= "#6610F2",
-    "HIPEC"                    = "#28A745"
+    "Untreated"                 = "#6C757D",
+    "Systemic chemo"            = "#007BFF",
+    "Sys-chemo after untreated" = "#6610F2",
+    "HIPEC"                     = "#28A745"
 )
 
-# Helper to make a color mapping for a set of tag names using TAG_COLORS, with fallbacks
 make_color_map <- function(tag_names) {
     if (!length(tag_names)) return(setNames(character(), character()))
     pal <- TAG_COLORS
     missing <- setdiff(tag_names, names(pal))
     if (length(missing)) {
-        # fallback palette for any unexpected tags
         extra_cols <- grDevices::hcl(h = seq(15, 375, length.out = length(missing) + 1L)[1:length(missing)],
                                      c = 80, l = 55)
         names(extra_cols) <- missing
@@ -52,14 +47,10 @@ make_color_map <- function(tag_names) {
     pal[tag_names]
 }
 
-# Fixed vocabulary used for tag-cloud list and color mapping
 default_tag_vocab <- function() {
     c(
-        # type
         "Peritoneum","Liver","Locoregional","Distant (any)",
-        # timing
         "Synchronous","Metachronous","Meta after sync",
-        # treatment
         "Untreated","Systemic chemo","Sys-chemo after untreated","HIPEC"
     )
 }
@@ -81,13 +72,23 @@ ui <- fluidPage(
       .filename { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; color:#333; }
       .thumb { position: relative; display: inline-block; cursor: pointer; width: 100%; }
       .thumbnail { width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background:#fff; border:1px solid #d0d0d0; border-radius:10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
-      /* Tags now live BELOW the image, not overlayed */
       .tag-strip { position: static; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; justify-content: flex-start; max-width: 100%; }
       .tag-chip { font-size: 10px; line-height: 1; color: #fff; border-radius: 999px; padding: 4px 7px; box-shadow: 0 1px 2px rgba(0,0,0,.18); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+      /* Tag cloud styles (prettier + rounded + gray for selected) */
+      .tag-cloud { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+      .tag-pill { display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+                  font-size: 11px; line-height: 1; color: #fff; border-radius: 9999px;
+                  padding: 6px 10px; box-shadow: 0 1px 2px rgba(0,0,0,.15); user-select: none; }
+      .tag-pill.inactive { opacity: 0.72; }
+      .tag-pill.active   { background: #9aa0a6 !important; border: 1px solid #9aa0a6;
+                           color: #fff; filter: grayscale(100%); opacity: 0.85; }
+
       .popup { position: fixed; display: none; border:1px solid #bdbdbd; background:#fff; border-radius:12px; box-shadow:0 8px 26px rgba(0,0,0,.20); width: 520px; height: auto; z-index: 9999; max-width: 90vw; max-height: 90vh; overflow: hidden; }
       .popup-title { font-size: 14px; font-weight: 600; background:#f5f5f5; padding:6px 10px; border-bottom:1px solid #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .popup img { display:block; max-width:100%; height:auto; max-height:calc(90vh - 32px); object-fit:contain; }
       @media (max-width: 900px) { .popup { width: min(520px, 90vw); } }
+
       .cohort-section h4 { margin-top: 0; }
       .cohort-actions a { display: inline-block; margin-right: 8px; }
       .cohort-zone { margin-top: 8px; border: 2px dashed #bbb; border-radius: 10px; padding: 10px; min-height: 70px; background: #fafafa; transition: border-color .15s ease, background-color .15s ease; }
@@ -193,14 +194,7 @@ ui <- fluidPage(
                 
                 div(class = "cohort-section",
                     tags$h4("Cohorts"),
-                    div(class = "cohort-actions",
-                        actionLink("view_all", label = "Full cohort"),
-                        HTML("&nbsp;|;&nbsp;"),
-                        actionLink("view_c1", label = "Cohort 1"),
-                        HTML("&nbsp;|;&nbsp;"),
-                        actionLink("view_c2", label = "Cohort 2")
-                    ),
-                    
+                    uiOutput("cohort_nav"),  # NEW: reactive banner with counts
                     div(class = "cohort-zone", id = "cohortDrop1",
                         div(class="cohort-header",
                             tags$h5(class="cohort-title","Cohort 1"),
@@ -316,15 +310,15 @@ server <- function(input, output, session) {
     items      <- reactiveVal(list())
     notes      <- reactiveVal(NULL)
     
-    # Holds the full, normalized tag data frame (TSV) --------------- NEW
+    # Full tag table (normalized)
     tag_df     <- reactiveVal(NULL)
     
-    # Patient tag-cloud (left) - objects exist; counts will be computed on-the-fly now
-    tags_mat       <- reactiveVal(NULL)                               # kept for compatibility (not used for counts)
-    tag_colors     <- reactiveVal(setNames(character(), character())) # color map for left tag cloud
+    # Left tag cloud (colors fixed; counts computed on the fly)
+    tags_mat       <- reactiveVal(NULL)
+    tag_colors     <- reactiveVal(setNames(character(), character()))
     selected_tags  <- reactiveVal(character())
     
-    # Sample-level attributes (per-tip)
+    # Per-tip attributes for tree subsetting
     sample_attrs <- reactiveVal(list(
         type        = setNames(character(), character()),
         treated     = setNames(character(), character()),
@@ -332,25 +326,36 @@ server <- function(input, output, session) {
         in_collapsed= setNames(logical(),   character())
     ))
     
-    # Two cohorts
+    # Cohorts
     empty_cohorts <- list(`Cohort 1` = character(), `Cohort 2` = character())
     cohort_labels <- reactiveVal(empty_cohorts)
     
     view_mode     <- reactiveVal("all")
     layout_mode   <- reactiveVal("Unrooted")
     
-    # --- Card tag vocabulary (from dropdowns, excluding 'No preference') ---
     card_tag_vocab <- reactive({
         type_opts  <- c("Peritoneum","Liver","Locoregional","Distant (any)")
         time_opts  <- c("Synchronous","Metachronous","Meta after sync")
         treat_opts <- c("Untreated","Systemic chemo","Sys-chemo after untreated","HIPEC")
         unique(c(type_opts, time_opts, treat_opts))
     })
-    card_tag_colors <- reactive({
-        make_color_map(card_tag_vocab())
+    card_tag_colors <- reactive({ make_color_map(card_tag_vocab()) })
+    
+    # ---- Cohort banner counts (reactive links) ----
+    output$cohort_nav <- renderUI({
+        n_all <- length(items())
+        cls <- cohort_labels()
+        n1 <- length(cls[[1]]); n2 <- length(cls[[2]])
+        div(class = "cohort-actions",
+            actionLink("view_all", label = sprintf("Full cohort (%d)", n_all)),
+            HTML("&nbsp;|&nbsp;"),
+            actionLink("view_c1",  label = sprintf("Cohort 1 (%d)", n1)),
+            HTML("&nbsp;|&nbsp;"),
+            actionLink("view_c2",  label = sprintf("Cohort 2 (%d)", n2))
+        )
     })
     
-    # --- Cohort counters/badges ---
+    # Additional summary below (kept)
     output$cohort_counts <- renderUI({
         its <- items(); n_all <- length(its)
         cls <- cohort_labels()
@@ -394,16 +399,13 @@ server <- function(input, output, session) {
         })
     })
     
-    # View toggles
     observeEvent(input$view_all, { view_mode("all") })
-    observeEvent(input$view_c1,  { view_mode("c1") })
-    observeEvent(input$view_c2,  { view_mode("c2") })
+    observeEvent(input$view_c1,  { view_mode("c1")  })
+    observeEvent(input$view_c2,  { view_mode("c2")  })
     
-    # Clear cohorts
     observeEvent(input$clear_c1, { x <- cohort_labels(); x[[1]] <- character(); cohort_labels(x); if (view_mode()=="c1") view_mode("all") })
     observeEvent(input$clear_c2, { x <- cohort_labels(); x[[2]] <- character(); cohort_labels(x); if (view_mode()=="c2") view_mode("all") })
     
-    # Helper to add to cohort WITHOUT switching views
     add_to_cohort <- function(idx, lab) {
         x <- cohort_labels()
         cur <- x[[idx]]
@@ -414,7 +416,6 @@ server <- function(input, output, session) {
         }
     }
     
-    # Map card id -> label
     id_to_label <- function(card_id) {
         its <- items(); if (!length(its)) return(NULL)
         id2lab <- setNames(vapply(its, `[[`, "", "label"), vapply(its, `[[`, "", "id"))
@@ -465,7 +466,6 @@ server <- function(input, output, session) {
         invisible(TRUE)
     }
     
-    # ---- NEW: load tags TSV from a path (used for auto-load + uploads) ----
     to_logical_safe <- function(x) {
         y <- tolower(trimws(as.character(x)))
         out <- ifelse(y %in% c("true","t","1","yes","y"), TRUE,
@@ -473,8 +473,7 @@ server <- function(input, output, session) {
         as.logical(out)
     }
     
-    # Builds patient-level tag matrix (kept for reference; counts now computed on the fly)
-    build_tag_matrix_from_tsv <- function(df) {
+    build_tag_matrix_from_tsv <- function(df) {  # (kept; not used for counts)
         if ("Patient_ID" %in% names(df)) df$Patient_ID <- trimws(as.character(df$Patient_ID))
         if ("met_treated" %in% names(df)) df$met_treated <- trimws(as.character(df$met_treated))
         if ("met_timing"  %in% names(df)) df$met_timing  <- gsub("(?i)^meta[- ]?after[- ]?sync$", "Meta after sync",
@@ -496,7 +495,6 @@ server <- function(input, output, session) {
         tag_levels <- unique(c(type_levels, time_levels, treat_levels))
         mat <- matrix(0, nrow = length(tag_levels), ncol = length(patients),
                       dimnames = list(tag_levels, patients))
-        
         spl <- split(df, df$Patient_ID)
         for (pid in names(spl)) {
             sub <- spl[[pid]]
@@ -518,7 +516,6 @@ server <- function(input, output, session) {
             tset <- intersect(tset, rownames(mat))
             if (length(tset) && pid %in% colnames(mat)) mat[tset, pid] <- 1
         }
-        
         mat
     }
     
@@ -570,7 +567,6 @@ server <- function(input, output, session) {
             return(invisible(FALSE))
         }
         
-        # normalize fields once and store full DF ---------------------- NEW
         if ("met_timing" %in% names(df)) {
             df$met_timing <- gsub("(?i)^meta[- ]?after[- ]?sync$", "Meta after sync",
                                   trimws(as.character(df$met_timing)), perl = TRUE)
@@ -581,18 +577,15 @@ server <- function(input, output, session) {
         if ("sample" %in% names(df))      df$sample      <- trimws(as.character(df$sample))
         tag_df(df)
         
-        # left-panel patient tag matrix (kept for compatibility; counts now computed per-tree)
         mat <- try(build_tag_matrix_from_tsv(df), silent = TRUE)
         if (inherits(mat, "try-error") || !nrow(mat) || !ncol(mat)) {
             tags_mat(NULL)
         } else {
             tags_mat(mat)
         }
-        # set a stable color map for the full vocabulary
         tag_colors(make_color_map(default_tag_vocab()))
         selected_tags(character())
         
-        # per-tip attributes (used for subsetting trees; left in place)
         sa <- build_sample_attrs_from_tsv(df)
         sample_attrs(sa)
         
@@ -600,13 +593,11 @@ server <- function(input, output, session) {
         invisible(TRUE)
     }
     
-    # Auto-load data.rds if present
     if (file.exists("data.rds")) {
         load_from_path("data.rds", source_label = "./data.rds")
     } else {
         notes("Tip: place data.rds (named list of distance matrices) in the working directory to auto-load on startup.")
     }
-    # Auto-load sample_info_annotated.txt if present
     if (file.exists("sample_info_annotated.txt")) {
         load_tags_from_path("sample_info_annotated.txt", source_label = "./sample_info_annotated.txt")
     }
@@ -616,19 +607,13 @@ server <- function(input, output, session) {
         else { items(list()); cohort_labels(empty_cohorts); view_mode("all"); dist_list(NULL); raw_list(NULL); notes("No ./data.rds found.") }
     })
     observeEvent(input$rds, { req(input$rds$datapath); load_from_path(input$rds$datapath, source_label = "uploaded file") }, ignoreInit = TRUE)
-    
-    # Upload tags TSV (overrides auto-load)
-    observeEvent(input$tag_csv, {
-        req(input$tag_csv$datapath)
-        load_tags_from_path(input$tag_csv$datapath, source_label = "uploaded file")
-    }, ignoreInit = TRUE)
+    observeEvent(input$tag_csv, { req(input$tag_csv$datapath); load_tags_from_path(input$tag_csv$datapath, source_label = "uploaded file") }, ignoreInit = TRUE)
     
     observeEvent(input$layout,    { layout_mode(input$layout)    }, ignoreInit = TRUE)
     observeEvent(input$tree_size, { NULL }, ignoreInit = TRUE)
     
-    # --- Helpers for per-tree tags (subset DF by Patient_ID, then limit to tree samples) ---- NEW
+    # ---- Per-tree tag helpers ----
     tree_tip_labels <- function(label) {
-        # Prefer current built tree (respects Full/Collapsed and cohort subsetting); fallback to raw dist matrix
         lst <- raw_list()
         if (!is.null(lst) && label %in% names(lst)) {
             tr <- lst[[label]]
@@ -642,21 +627,18 @@ server <- function(input, output, session) {
         character(0)
     }
     
-    # Compute tags for a given tree using Patient_ID subset + the tree's tip samples
     tags_for_tree <- function(label) {
         df <- tag_df()
         if (is.null(df) || !("Patient_ID" %in% names(df))) return(character())
         sub <- df[df$Patient_ID == label, , drop = FALSE]
         if (!nrow(sub)) return(character())
         
-        # further restrict to samples present in this tree (if sample column exists)
         rn <- tree_tip_labels(label)
         if ("sample" %in% names(sub) && length(rn)) {
             sub <- sub[sub$sample %in% rn, , drop = FALSE]
             if (!nrow(sub)) return(character())
         }
         
-        # derive tags from met_type / timing / treated (normalized timing already)
         typ_raw <- unique(sub$met_type[!is.na(sub$met_type) & nzchar(sub$met_type)])
         type_tags <- intersect(typ_raw, c("Peritoneum","Liver","Locoregional"))
         if (length(typ_raw) &&
@@ -673,12 +655,9 @@ server <- function(input, output, session) {
         unique(c(type_tags, tim_tags, trt_tags))
     }
     
-    # Card tags derived from per-tree data frame subset -------------- UPDATED
-    card_tags_for_tree <- function(label) {
-        tags_for_tree(label)
-    }
+    card_tags_for_tree <- function(label) { tags_for_tree(label) }
     
-    # ---- Tag cloud UI (left) — counts now computed per-tree with the same logic ---- UPDATED
+    # ---- Tag cloud (prettier + gray selected) ----
     output$tag_cloud <- renderUI({
         df <- tag_df()
         if (is.null(df)) {
@@ -700,7 +679,6 @@ server <- function(input, output, session) {
         }
         tree_labels <- if (length(tree_subset)) vapply(tree_subset, `[[`, "", "label") else character()
         
-        # For each tag, count how many trees in the current view would have that tag
         counts <- vapply(tg_names, function(tg) {
             if (!length(tree_labels)) return(0L)
             sum(vapply(tree_labels, function(lbl) tg %in% tags_for_tree(lbl), logical(1)))
@@ -709,10 +687,10 @@ server <- function(input, output, session) {
         tags$div(class = "tag-cloud",
                  lapply(seq_along(tg_names), function(i) {
                      tg <- tg_names[[i]]
-                     bg <- cols_map[[tg]] %||% "#666"
                      is_active     <- tg %in% sel
                      has_selection <- length(sel) > 0
                      cls <- paste("tag-pill", if (is_active) "active" else if (has_selection) "inactive")
+                     bg  <- if (is_active) "#9aa0a6" else (cols_map[[tg]] %||% "#666")
                      cnt <- counts[i]
                      tags$span(
                          class = cls,
@@ -741,19 +719,17 @@ server <- function(input, output, session) {
         )
     })
     
-    # --------- Build per-tree specs (unchanged) ----------
-    build_current_specs <- reactive({
+    # -------- Build specs for a specific view key ('all', 'c1', 'c2') --------
+    build_specs <- function(vm_key = "all") {
         obj <- dist_list()
         if (is.null(obj) || !length(obj)) return(list())
         
-        vm <- view_mode()
         sa <- sample_attrs()
-        layout <- layout_mode()  # dependency
-        size  <- input$tree_size   # dependency
+        size  <- input$tree_size   # Full / Collapsed
         
         get_selection <- function(idx) {
-            sel_type    <- if (idx == 1L) input$cohort1_type    else input$cohort2_type
-            sel_timing  <- if (idx == 1L) input$cohort1_timing  else input$cohort2_timing
+            sel_type    <- if (idx == 1L) input$cohort1_type      else input$cohort2_type
+            sel_timing  <- if (idx == 1L) input$cohort1_timing    else input$cohort2_timing
             sel_treated <- if (idx == 1L) input$cohort1_treatment else input$cohort2_treatment
             sel_timing  <- if (is.null(sel_timing)  || sel_timing  == "No preference") NULL else sel_timing
             sel_treated <- if (is.null(sel_treated) || sel_treated == "No preference") NULL else sel_treated
@@ -770,7 +746,7 @@ server <- function(input, output, session) {
         }
         
         collapsed_on <- identical(size, "Collapsed")
-        idx <- switch(vm, c1 = 1L, c2 = 2L, 0L)
+        idx <- switch(vm_key, c1 = 1L, c2 = 2L, 0L)
         specs <- list()
         
         for (nm in names(obj)) {
@@ -778,11 +754,10 @@ server <- function(input, output, session) {
             dmat <- if (inherits(m, "dist")) as.matrix(m) else as.matrix(m)
             rn <- rownames(dmat); if (is.null(rn)) next
             
-            # collapse mask: drop only explicit FALSE
             ic_map <- sa$in_collapsed; ic_vals <- ic_map[rn]
             keep_collapse <- if (!collapsed_on) rep(TRUE, length(rn)) else !( !is.na(ic_vals) & ic_vals == FALSE )
             
-            if (identical(vm, "all") || !length(sa$type)) {
+            if (identical(vm_key, "all") || !length(sa$type)) {
                 keep_mask <- keep_collapse
                 keep <- rn[keep_mask]
                 kept_n <- length(keep)
@@ -804,7 +779,6 @@ server <- function(input, output, session) {
                 next
             }
             
-            # Cohort view
             choice <- get_selection(idx)
             sel_met_set <- choice$sel_met_set
             sel_timing  <- choice$sel_timing
@@ -847,10 +821,12 @@ server <- function(input, output, session) {
                                 kept_n = kept_n, selected_n = selected_n)
         }
         specs
-    })
+    }
     
-    # Build images + item metadata from specs
-    rebuild_assets <- function(layout, specs, current_cohorts = NULL) {
+    # Keep gallery reactive building using current view
+    observe({
+        specs <- build_specs(view_mode())
+        # --- Build images + item metadata from specs ---
         old <- list.files(trees_dir, full.names = TRUE)
         if (length(old)) unlink(old, recursive = TRUE, force = TRUE)
         if (is.null(specs) || !length(specs)) {
@@ -859,15 +835,13 @@ server <- function(input, output, session) {
             return(invisible(FALSE))
         }
         
-        ptype <- if (identical(layout, "Rooted")) "phylogram" else "unrooted"
+        ptype <- if (identical(layout_mode(), "Rooted")) "phylogram" else "unrooted"
         out <- list(); built <- list(); idx <- 0L
-        
         for (nm in names(specs)) {
             sp <- specs[[nm]]
             idx <- idx + 1L
             stamp <- as.integer(Sys.time())
             base <- paste0(sanitize_name(nm), "_", idx, "_", stamp)
-            
             thumb_png <- file.path(trees_dir, paste0(base, "_thumb.png"))
             large_png <- file.path(trees_dir, paste0(base, "_large.png"))
             pdf_file  <- file.path(trees_dir, paste0(base, ".pdf"))
@@ -902,24 +876,18 @@ server <- function(input, output, session) {
         items(out)
         raw_list(built)
         
-        if (!is.null(current_cohorts)) {
-            valid_labs <- vapply(out, `[[`, "", "label")
-            trimmed <- list(
-                `Cohort 1` = intersect(current_cohorts[[1]], valid_labs),
-                `Cohort 2` = intersect(current_cohorts[[2]], valid_labs)
-            )
-            cohort_labels(trimmed)
-        }
+        # keep cohort labels only for existing items
+        valid_labs <- vapply(out, `[[`, "", "label")
+        trimmed <- list(
+            `Cohort 1` = intersect(cohort_labels()[[1]], valid_labs),
+            `Cohort 2` = intersect(cohort_labels()[[2]], valid_labs)
+        )
+        cohort_labels(trimmed)
         
         n_disabled <- sum(vapply(out, function(x) isTRUE(x$disabled), logical(1)))
-        notes(paste0("Layout: ", layout, ". Generated ", length(out), " item(s). Grayed-out: ", n_disabled, "."))
+        notes(paste0("Layout: ", layout_mode(), ". Generated ", length(out), " item(s). Grayed-out: ", n_disabled, "."))
         session$sendCustomMessage("setupDropZone", NULL)
         invisible(TRUE)
-    }
-    
-    observe({
-        specs <- build_current_specs()
-        rebuild_assets(layout_mode(), specs, current_cohorts = cohort_labels())
     })
     
     # ---- Gallery (cohort + AND tag filter) ----
@@ -943,7 +911,6 @@ server <- function(input, output, session) {
         sel <- selected_tags()
         if (length(sel)) {
             show <- Filter(function(x) {
-                # filter uses the same per-tree tag logic
                 tgs <- tags_for_tree(x$label)
                 all(sel %in% tgs)
             }, show)
@@ -982,7 +949,7 @@ server <- function(input, output, session) {
         })
     })
     
-    # Status panel
+    # Status
     output$status <- renderUI({
         txt <- notes(); if (is.null(txt) || !nzchar(txt)) return(NULL)
         tags$div(
@@ -992,23 +959,26 @@ server <- function(input, output, session) {
         )
     })
     
-    # ---- Boxplot demo ----
+    # ---- Plot data mirrors cohort views (filters applied) ----
     boxplot_data <- eventReactive(input$test_boxplot, {
+        # Build specs for each cohort view so filters & collapsed are applied
+        specs_c1 <- build_specs("c1")
+        specs_c2 <- build_specs("c2")
+        
         cls <- cohort_labels()
-        lst <- raw_list()
-        if (is.null(lst) || !length(lst)) {
-            return(data.frame(Cohort = character(), Tips = integer()))
-        }
-        get_counts <- function(labels) {
-            labs <- intersect(labels, names(lst))
+        
+        get_counts <- function(labels, specs) {
+            labs <- intersect(labels, names(specs))
             if (!length(labs)) return(integer(0))
             vapply(labs, function(l) {
-                tr <- lst[[l]]
-                if (!is.null(tr) && !is.null(tr$tip.label)) length(tr$tip.label) else NA_integer_
+                sp <- specs[[l]]
+                if (!is.null(sp$phylo) && !is.null(sp$phylo$tip.label)) length(sp$phylo$tip.label) else NA_integer_
             }, integer(1))
         }
-        c1 <- get_counts(cls[[1]])
-        c2 <- get_counts(cls[[2]])
+        
+        c1 <- get_counts(cls[[1]], specs_c1)
+        c2 <- get_counts(cls[[2]], specs_c2)
+        
         data.frame(
             Cohort = c(rep("Cohort 1", length(c1)), rep("Cohort 2", length(c2))),
             Tips   = c(c1, c2),
@@ -1024,14 +994,17 @@ server <- function(input, output, session) {
                 theme(axis.text  = element_blank(), axis.title = element_blank(), panel.grid = element_blank())
         } else {
             ggplot(df, aes(x = Cohort, y = Tips)) +
-                scale_y_continuous(limits=c(min(df$Tips),max(df$Tips)*1.025)) +
-                geom_point(position=position_jitter(width=0.15, height=0, seed=42), pch=21, size=4, color='white', stroke=0.25, aes(fill=Cohort)) +
+                scale_y_continuous(limits=c(min(df$Tips, na.rm = TRUE), max(df$Tips, na.rm = TRUE)*1.025)) +
+                geom_point(position=position_jitter(width=0.15, height=0, seed=42),
+                           pch=21, size=4, color='white', stroke=0.25, aes(fill=Cohort)) +
                 stat_compare_means() +
-                geom_boxplot(fill=NA,outlier.shape=NA) +
-                labs(x = NULL, y = "Number of tips") +
+                geom_boxplot(fill=NA, outlier.shape=NA) +
+                labs(x = NULL, y = "Number of tips (post-filter)") +
                 theme_minimal()
         }
     })
 }
 
 shinyApp(ui, server)
+
+

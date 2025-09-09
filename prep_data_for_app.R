@@ -97,4 +97,33 @@ names(dm_list) <- val_patients
 saveRDS(dm_list, file='~/lab_repos/tree_app/data.rds')
 
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# save sample_info for tags
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+val_sample_info[met_timing=='primary/normal', met_timing:='Primary/Normal']
+val_sample_info[met_timing=='synchronous', met_timing:='Synchronous']
+val_sample_info[met_timing=='metachronous', met_timing:='Metachronous']
+
+val_sample_info[group %in% c('Normal','Primary'), met_treated:='Primary/Normal']
+val_sample_info[met_treated %in% c('neoadj sys chemo','adj sys chemo','neoadj sys chemo + adj sys chemo'), met_treated:='Systemic chemo']
+val_sample_info[met_treated=='untreated', met_treated:='Untreated']
+val_sample_info[met_treated=='hipec', met_treated:='HIPEC']
+
+
+# add Metachronous after Synchronous
+sync_patients <- val_sample_info[met_timing=='Synchronous',(Patient_ID)]
+meta_patients <- val_sample_info[met_timing=='Metachronous',(Patient_ID)]
+both_patients <- intersect(sync_patients, meta_patients)
+val_sample_info[Patient_ID %in% both_patients & met_timing=='Metachronous', met_timing:='Meta after sync']
+
+# add treated after untreated
+untr_patients <- val_sample_info[met_treated=='Untreated',(Patient_ID)]
+tr_patients <- val_sample_info[met_treated=='Systemic chemo',(Patient_ID)]
+both_patients <- intersect(untr_patients, tr_patients)
+val_sample_info[Patient_ID %in% both_patients & !group %in% c('Normal','Primary') & met_treated=='Systemic chemo', met_treated:='Sys-chemo after untreated']
+saveRDS(val_sample_info, file='~/lab_repos/tree_app/sample_info_annotated.txt')
+
+
+
 
