@@ -657,6 +657,84 @@ server <- function(input, output, session) {
     
     card_tags_for_tree <- function(label) { tags_for_tree(label) }
     
+    # ---------- NEW HELPERS (post-filter trees for each cohort) ----------
+    
+    # Minimal safe subsetter for symmetric numeric matrices by a set of tip names
+    subset_matrix_by_tips_safe <- function(mat, keep) {
+        if (is.null(mat) || !is.matrix(mat) || !length(keep)) return(NULL)
+        keep <- intersect(keep, rownames(mat))
+        if (length(keep) < 3) return(NULL)  # need >=3 tips to build a tree
+        out <- mat[keep, keep, drop = FALSE]
+        # force symmetry & zero diag (defensive)
+        diag(out) <- 0
+        if (!isTRUE(all.equal(out, t(out), tolerance = 1e-8))) {
+            out <- (out + t(out)) / 2
+            diag(out) <- 0
+        }
+        out
+    }
+    
+    # tiny collapser for "collapsed" view based on in_collapsed column in tag_df (if present)
+    collapse_by_tsv <- function(mat, dsub) {
+        if (is.null(mat) || is.null(dsub) || !nrow(dsub)) return(mat)
+        if (!("in_collapsed" %in% colnames(dsub))) return(mat)
+        keep_samples <- unique(dsub$sample[is.na(dsub$in_collapsed) | as.logical(dsub$in_collapsed)])
+        subset_matrix_by_tips_safe(mat, keep_samples) %||% mat
+    }
+
+    
+    # Build post-filter, ALWAYS-collapsed trees for Cohort 1 and Cohort 2,
+    # mirroring exactly what the cohort card view shows (but forcing collapse).
+    cohort_postfilter_phylo_lists <- function(always_collapse = TRUE) {
+        # Use the same specs used to render the cohort cards
+        specs_c1 <- build_specs("c1")
+        specs_c2 <- build_specs("c2")
+        
+        # helper: extract non-disabled phylo objects, forcing collapsed form
+        extract_from_specs <- function(specs) {
+            if (is.null(specs) || !length(specs)) return(list())
+            out <- list()
+            for (nm in names(specs)) {
+                sp <- specs[[nm]]
+                # Skip gray cards
+                if (isTRUE(sp$disabled)) next
+                tr <- sp$phylo
+                if (!inherits(tr, "phylo")) next
+                
+                # Always enforce collapsed form (even if the cohort UI is on full)
+                if (isTRUE(always_collapse)) {
+                    # Prefer your app's collapse hook(s) if available
+                    tr2 <- NULL
+                    for (nm_hook in c("apply_collapse_size_filter", "collapse_tree_for_display", "build_collapsed_tree")) {
+                        if (exists(nm_hook, mode = "function", inherits = TRUE)) {
+                            fn <- get(nm_hook, mode = "function", inherits = TRUE)
+                            tr2 <- try({
+                                fml <- names(formals(fn))
+                                if (!is.null(fml) && "force" %in% fml) fn(tr, force = TRUE) else fn(tr)
+                            }, silent = TRUE)
+                            if (!inherits(tr2, "try-error") && inherits(tr2, "phylo")) { tr <- tr2; break }
+                        }
+                    }
+                    # Safe fallback: collapse zero-length internal branches
+                    if (!inherits(tr2, "phylo")) {
+                        tr3 <- try(if (!is.null(tr$edge.length)) ape::di2multi(tr, tol = 0) else tr, silent = TRUE)
+                        if (!inherits(tr3, "try-error") && inherits(tr3, "phylo")) tr <- tr3
+                    }
+                }
+                
+                out[[sp$label %||% nm]] <- tr
+            }
+            out
+        }
+        
+        list(
+            c1 = extract_from_specs(specs_c1),
+            c2 = extract_from_specs(specs_c2)
+        )
+    }
+    
+    
+    
     # ---- Tag cloud (prettier + gray selected) ----
     output$tag_cloud <- renderUI({
         df <- tag_df()
@@ -959,25 +1037,23 @@ server <- function(input, output, session) {
         )
     })
     
-    # ---- Plot data mirrors cohort views (filters applied) ----
+
+    # ---- Plot data mirrors cohort views (ALWAYS-collapsed post-filter trees) ----
     boxplot_data <- eventReactive(input$test_boxplot, {
-        # Build specs for each cohort view so filters & collapsed are applied
-        specs_c1 <- build_specs("c1")
-        specs_c2 <- build_specs("c2")
+        lists <- cohort_postfilter_phylo_lists()
+        message('Saving post-filter trees to filtered_tree_lists.rds')
+        saveRDS(lists,file='~/Desktop/filtered_tree_lists.rds')
         
-        cls <- cohort_labels()
-        
-        get_counts <- function(labels, specs) {
-            labs <- intersect(labels, names(specs))
-            if (!length(labs)) return(integer(0))
-            vapply(labs, function(l) {
-                sp <- specs[[l]]
-                if (!is.null(sp$phylo) && !is.null(sp$phylo$tip.label)) length(sp$phylo$tip.label) else NA_integer_
+        # Count tips in each cohort’s post-filtered trees
+        count_tips <- function(lst) {
+            if (is.null(lst) || !length(lst)) return(integer(0))
+            vapply(lst, function(tr) {
+                if (!is.null(tr) && inherits(tr, "phylo") && !is.null(tr$tip.label)) length(tr$tip.label) else NA_integer_
             }, integer(1))
         }
         
-        c1 <- get_counts(cls[[1]], specs_c1)
-        c2 <- get_counts(cls[[2]], specs_c2)
+        c1 <- count_tips(lists$c1)
+        c2 <- count_tips(lists$c2)
         
         data.frame(
             Cohort = c(rep("Cohort 1", length(c1)), rep("Cohort 2", length(c2))),
@@ -986,6 +1062,8 @@ server <- function(input, output, session) {
         )
     }, ignoreInit = TRUE)
     
+    
+   
     output$cohort_plot <- renderPlot({
         df <- boxplot_data()
         if (is.null(df) || !nrow(df)) {
