@@ -1,0 +1,15 @@
+name: tree_app
+channels:
+  - defaults
+dependencies:
+  - conda-forge::r-shiny
+  - conda-forge::r-ggplot2
+  - conda-forge::r-ape
+  - bioconda::bioconductor-ggtree
+  - conda-forge::r-jsonlite
+  - conda-forge::r-ggpubr
+  - conda-forge::r-ggrepel
+  - conda-forge::r-phytools
+  - conda-forge::r-sortable
+  - conda-forge::r-shinyjqui
+prefix: /home/alex/miniconda3/envs/tree_app
