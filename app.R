@@ -8,6 +8,15 @@ library(ggplot2)
 library(ggpubr)
 library(phytools)
 
+if (interactive()) {
+    options(
+        shiny.error = browser,        # drop into debugger on uncaught errors
+        shiny.fullstacktrace = TRUE,  # deeper stack traces in the console
+        shiny.trace = TRUE            # verbose reactive invalidation logs (optional)
+    )
+}
+
+
 if (!requireNamespace("ape", quietly = TRUE)) {
     stop("This app requires the 'ape' package. Install it with install.packages('ape').")
 }
@@ -523,37 +532,47 @@ server <- function(input, output, session) {
         need <- c("sample","met_type","met_treated","met_timing")
         if (!all(need %in% colnames(df))) {
             return(list(
-                type        = setNames(character(), character()),
-                treated     = setNames(character(), character()),
-                timing      = setNames(character(), character()),
-                in_collapsed= setNames(logical(),   character())
+                type         = setNames(character(), character()),
+                treated      = setNames(character(), character()),
+                timing       = setNames(character(), character()),
+                in_collapsed = setNames(logical(),   character()),
+                has_patient  = FALSE
             ))
         }
+        
         s  <- trimws(as.character(df$sample))
         mt <- trimws(as.character(df$met_type))
         tr <- trimws(as.character(df$met_treated))
-        tm <- gsub("(?i)^meta[- ]?after[- ]?sync$", "Meta after sync", trimws(as.character(df$met_timing)), perl = TRUE)
-        ic <- if ("in_collapsed" %in% colnames(df)) to_logical_safe(df$in_collapsed) else rep(NA, length(s))
+        tm <- gsub("(?i)^meta[- ]?after[- ]?sync$", "Meta after sync",
+                   trimws(as.character(df$met_timing)), perl = TRUE)
+        ic <- if ("in_collapsed" %in% colnames(df)) {
+            y <- tolower(trimws(as.character(df$in_collapsed)))
+            ifelse(y %in% c("true","t","1","yes","y"), TRUE,
+                   ifelse(y %in% c("false","f","0","no","n"), FALSE, NA))
+        } else rep(NA, length(s))
+        
+        pid <- if ("Patient_ID" %in% colnames(df)) trimws(as.character(df$Patient_ID)) else rep(NA_character_, length(s))
         
         keep <- nzchar(s)
-        s <- s[keep]; mt <- mt[keep]; tr <- tr[keep]; tm <- tm[keep]; ic <- ic[keep]
-        if (!length(s)) {
-            return(list(
-                type        = setNames(character(), character()),
-                treated     = setNames(character(), character()),
-                timing      = setNames(character(), character()),
-                in_collapsed= setNames(logical(),   character())
-            ))
-        }
-        idx <- !duplicated(s, fromLast = TRUE)
+        s  <- s[keep]; mt <- mt[keep]; tr <- tr[keep]; tm <- tm[keep]; ic <- ic[keep]; pid <- pid[keep]
+        
+        # Composite key if Patient_ID exists, else fall back to sample
+        has_patient <- any(nzchar(pid))
+        key <- if (has_patient) paste0(pid, "|", s) else s
+        
+        # If duplicates, keep the last occurrence
+        idx <- !duplicated(key, fromLast = TRUE)
+        
         list(
-            type        = setNames(mt[which(idx)], s[which(idx)]),
-            treated     = setNames(tr[which(idx)], s[which(idx)]),
-            timing      = setNames(tm[which(idx)], s[which(idx)]),
-            in_collapsed= setNames(ic[which(idx)], s[which(idx)])
+            type         = setNames(mt[idx], key[idx]),
+            treated      = setNames(tr[idx], key[idx]),
+            timing       = setNames(tm[idx], key[idx]),
+            in_collapsed = setNames(ic[idx], key[idx]),
+            has_patient  = has_patient
         )
     }
     
+
     load_tags_from_path <- function(path, source_label = NULL) {
         df <- try(utils::read.delim(path, check.names = FALSE, stringsAsFactors = FALSE), silent = TRUE)
         if (inherits(df, "try-error")) {
@@ -627,6 +646,11 @@ server <- function(input, output, session) {
         character(0)
     }
     
+    sample_keys_for_tree <- function(tree_label, tip_names) {
+        sa <- sample_attrs()
+        if (isTRUE(sa$has_patient)) paste0(tree_label, "|", tip_names) else tip_names
+    }
+    
     tags_for_tree <- function(label) {
         df <- tag_df()
         if (is.null(df) || !("Patient_ID" %in% names(df))) return(character())
@@ -655,6 +679,62 @@ server <- function(input, output, session) {
         unique(c(type_tags, tim_tags, trt_tags))
     }
     
+    
+    tag_counts_for_tree <- function(label) {
+        df <- tag_df()
+        if (is.null(df) || !("Patient_ID" %in% names(df))) return(setNames(integer(0), character(0)))
+        
+        # Subset rows for this tree/patient
+        sub <- df[df$Patient_ID == label, , drop = FALSE]
+        if (!nrow(sub)) return(setNames(integer(0), character(0)))
+        
+        # Restrict to tips that actually exist on this tree
+        rn <- tree_tip_labels(label)
+        if ("sample" %in% names(sub) && length(rn)) {
+            sub <- sub[sub$sample %in% rn, , drop = FALSE]
+            if (!nrow(sub)) return(setNames(integer(0), character(0)))
+        }
+        
+        # Normalize timing text (same rule you use elsewhere)
+        if ("met_timing" %in% names(sub)) {
+            sub$met_timing <- gsub("(?i)^meta[- ]?after[- ]?sync$", "Meta after sync",
+                                   trimws(as.character(sub$met_timing)), perl = TRUE)
+        }
+        
+        # Prepare vectors
+        type_vals <- if ("met_type" %in% names(sub)) trimws(as.character(sub$met_type)) else character(0)
+        tim_vals  <- if ("met_timing" %in% names(sub)) trimws(as.character(sub$met_timing)) else character(0)
+        trt_vals  <- if ("met_treated" %in% names(sub)) trimws(as.character(sub$met_treated)) else character(0)
+        
+        # Counts for each displayed tag label
+        cnt_type <- c(
+            "Peritoneum"      = sum(type_vals == "Peritoneum",  na.rm = TRUE),
+            "Liver"           = sum(type_vals == "Liver",       na.rm = TRUE),
+            "Locoregional"    = sum(type_vals == "Locoregional",na.rm = TRUE),
+            # "Distant (any)" means any metastasis type that is not Normal/Primary/Locoregional/Peritoneum
+            "Distant (any)"   = sum(!is.na(type_vals) & !(type_vals %in% c("Normal","Primary","Locoregional","Peritoneum")))
+        )
+        
+        cnt_time <- c(
+            "Synchronous"     = sum(tim_vals == "Synchronous",      na.rm = TRUE),
+            "Metachronous"    = sum(tim_vals == "Metachronous",     na.rm = TRUE),
+            "Meta after sync" = sum(tim_vals == "Meta after sync",  na.rm = TRUE)
+        )
+        
+        cnt_trt <- c(
+            "Untreated"                 = sum(trt_vals == "Untreated",                 na.rm = TRUE),
+            "Systemic chemo"            = sum(trt_vals == "Systemic chemo",            na.rm = TRUE),
+            "Sys-chemo after untreated" = sum(trt_vals == "Sys-chemo after untreated", na.rm = TRUE),
+            "HIPEC"                     = sum(trt_vals == "HIPEC",                     na.rm = TRUE)
+        )
+        
+        # Return a named vector of counts for all possible tags
+        c(cnt_type, cnt_time, cnt_trt)
+    }
+    
+    
+    
+    
     card_tags_for_tree <- function(label) { tags_for_tree(label) }
     
     # ---------- NEW HELPERS (post-filter trees for each cohort) ----------
@@ -666,11 +746,11 @@ server <- function(input, output, session) {
         if (length(keep) < 3) return(NULL)  # need >=3 tips to build a tree
         out <- mat[keep, keep, drop = FALSE]
         # force symmetry & zero diag (defensive)
-        diag(out) <- 0
-        if (!isTRUE(all.equal(out, t(out), tolerance = 1e-8))) {
-            out <- (out + t(out)) / 2
-            diag(out) <- 0
-        }
+        #diag(out) <- 0
+        #if (!isTRUE(all.equal(out, t(out), tolerance = 1e-8))) {
+        #    out <- (out + t(out)) / 2
+        #    diag(out) <- 0
+        #}
         out
     }
     
@@ -679,13 +759,15 @@ server <- function(input, output, session) {
         if (is.null(mat) || is.null(dsub) || !nrow(dsub)) return(mat)
         if (!("in_collapsed" %in% colnames(dsub))) return(mat)
         keep_samples <- unique(dsub$sample[is.na(dsub$in_collapsed) | as.logical(dsub$in_collapsed)])
-        subset_matrix_by_tips_safe(mat, keep_samples) %||% mat
+        mat[keep_samples, keep_samples]
+        #subset_matrix_by_tips_safe(mat, keep_samples) %||% mat
     }
 
     
     # Build post-filter, ALWAYS-collapsed trees for Cohort 1 and Cohort 2,
     # mirroring exactly what the cohort card view shows (but forcing collapse).
     cohort_postfilter_phylo_lists <- function(always_collapse = TRUE) {
+
         # Use the same specs used to render the cohort cards
         specs_c1 <- build_specs("c1")
         specs_c2 <- build_specs("c2")
@@ -799,6 +881,7 @@ server <- function(input, output, session) {
     
     # -------- Build specs for a specific view key ('all', 'c1', 'c2') --------
     build_specs <- function(vm_key = "all") {
+        
         obj <- dist_list()
         if (is.null(obj) || !length(obj)) return(list())
         
@@ -830,9 +913,12 @@ server <- function(input, output, session) {
         for (nm in names(obj)) {
             m <- obj[[nm]]
             dmat <- if (inherits(m, "dist")) as.matrix(m) else as.matrix(m)
+            dmat <- dmat[order(rownames(dmat)),colnames(dmat)]
             rn <- rownames(dmat); if (is.null(rn)) next
             
-            ic_map <- sa$in_collapsed; ic_vals <- ic_map[rn]
+            keys <- sample_keys_for_tree(nm, rn)
+            ic_map <- sa$in_collapsed
+            ic_vals <- ic_map[keys]
             keep_collapse <- if (!collapsed_on) rep(TRUE, length(rn)) else !( !is.na(ic_vals) & ic_vals == FALSE )
             
             if (identical(vm_key, "all") || !length(sa$type)) {
@@ -847,7 +933,7 @@ server <- function(input, output, session) {
                     d <- as_dist_safe(sub)
                     if (!is.null(d)) {
                         phy <- try(ape::nj(d), silent = TRUE)
-                        phy <- try(phytools::reroot(phy, grep('^N', phy$tip.label)), silent = TRUE)
+                        #phy <- try(phytools::reroot(phy, grep('^N', phy$tip.label)), silent = TRUE)
                         if (inherits(phy, "try-error") || !inherits(phy, "phylo")) { phy <- NULL; tooltip <- "Failed to build tree on subset" }
                     } else tooltip <- "Subset matrix invalid"
                 } else tooltip <- sprintf("Too few tips in subset (n=%d)", kept_n)
@@ -863,7 +949,7 @@ server <- function(input, output, session) {
             sel_treated <- choice$sel_treated
             have_selected_group <- length(sel_met_set) > 0
             
-            typ <- sa$type[rn]; trt <- sa$treated[rn]; tim <- sa$timing[rn]
+            typ <- sa$type[keys]; trt <- sa$treated[keys]; tim <- sa$timing[keys]
             keep_np  <- !is.na(typ) & typ %in% c("Normal","Primary")
             keep_sel <- rep(FALSE, length(rn))
             if (have_selected_group) {
@@ -1002,13 +1088,24 @@ server <- function(input, output, session) {
             card_tgs <- card_tags_for_tree(lbl)
             chips <- NULL
             if (length(card_tgs)) {
-                chips <- tags$div(
-                    class = "tag-strip",
-                    lapply(card_tgs, function(tag_nm) {
-                        bg <- cols_cards[[tag_nm]] %||% "#666"
-                        tags$span(class = "tag-chip", style = paste0("background:", bg, ";"), title = tag_nm, tag_nm)
-                    })
-                )
+
+                chips <- NULL
+                if (length(card_tgs)) {
+                    counts_vec <- tag_counts_for_tree(lbl)  # NEW: per-tag counts for this tree
+                    chips <- tags$div(
+                        class = "tag-strip",
+                        lapply(card_tgs, function(tag_nm) {
+                            bg <- cols_cards[[tag_nm]] %||% "#666"
+                            n  <- counts_vec[[tag_nm]] %||% 0L
+                            tags$span(
+                                class = "tag-chip",
+                                style = paste0("background:", bg, ";"),
+                                title = sprintf("%s (%d tips)", tag_nm, n),
+                                sprintf("%s (%d)", tag_nm, n)
+                            )
+                        })
+                    )
+                }
             }
             tags$div(
                 class = paste("card", if (isTRUE(it$disabled)) "disabled" else ""),
@@ -1040,7 +1137,16 @@ server <- function(input, output, session) {
 
     # ---- Plot data mirrors cohort views (ALWAYS-collapsed post-filter trees) ----
     boxplot_data <- eventReactive(input$test_boxplot, {
+        #browser()
         lists <- cohort_postfilter_phylo_lists()
+        cls <- cohort_labels()
+        c1_names <- cls[[1]]
+        c2_names <- cls[[2]]
+        valid_c1_names <- intersect(c1_names, names(lists[[1]]))
+        valid_c2_names <- intersect(c2_names, names(lists[[2]]))
+        lists[[1]] <- lists[[1]][valid_c1_names]
+        lists[[2]] <- lists[[2]][valid_c2_names]
+        
         message('Saving post-filter trees to filtered_tree_lists.rds')
         saveRDS(lists,file='~/Desktop/filtered_tree_lists.rds')
         

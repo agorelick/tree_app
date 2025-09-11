@@ -6,12 +6,12 @@
 
 library(data.table)
 library(ape)
-library(rds)
-library(stringr)
-library(ggplot2)
-library(ggbeeswarm)
-library(ggrepel)
-library(ggpubr)
+#library(rds)
+#library(stringr)
+#library(ggplot2)
+#library(ggbeeswarm)
+#library(ggrepel)
+#library(ggpubr)
 
 rm(list=ls())
 
@@ -94,7 +94,9 @@ read_distance_matrix <- function (file, return.as.matrix = T) {
 
 dm_list <- lapply(val_patients, load_tree, val_sample_info)
 names(dm_list) <- val_patients
-saveRDS(dm_list, file='~/lab_repos/tree_app/data.rds')
+
+#dm_list <- #dm_list[c('LM16','LM86')]#,'LM15','LM56')]
+saveRDS(dm_list, file='~/repos/tree_app/data.rds')
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -122,8 +124,12 @@ untr_patients <- val_sample_info[met_treated=='Untreated',(Patient_ID)]
 tr_patients <- val_sample_info[met_treated=='Systemic chemo',(Patient_ID)]
 both_patients <- intersect(untr_patients, tr_patients)
 val_sample_info[Patient_ID %in% both_patients & !group %in% c('Normal','Primary') & met_treated=='Systemic chemo', met_treated:='Sys-chemo after untreated']
-saveRDS(val_sample_info, file='~/lab_repos/tree_app/sample_info_annotated.txt')
 
+val_sample_info <- val_sample_info[Patient_ID %in% names(dm_list),]
+out <- val_sample_info[,c('Patient_ID','Real_Sample_ID','group','met_timing','met_treated','in_collapsed'),with=F]
+names(out) <- c('Patient_ID','sample','met_type','met_timing','met_treated','in_collapsed')
+write_tsv(out, file='~/repos/tree_app/sample_info_annotated.txt')
 
+x <- readRDS('~/Desktop/filtered_tree_lists.rds')
 
 
